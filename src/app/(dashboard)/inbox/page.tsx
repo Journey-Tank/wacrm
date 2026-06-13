@@ -157,14 +157,14 @@ export default function InboxPage() {
             prev.map((c) =>
               c.id === newMsg.conversation_id
                 ? {
-                    ...c,
-                    last_message_text: newMsg.content_text ?? "",
-                    last_message_at: newMsg.created_at,
-                    unread_count:
-                      activeConversation?.id === newMsg.conversation_id
-                        ? 0
-                        : c.unread_count + 1,
-                  }
+                  ...c,
+                  last_message_text: newMsg.content_text ?? "",
+                  last_message_at: newMsg.created_at,
+                  unread_count:
+                    activeConversation?.id === newMsg.conversation_id
+                      ? 0
+                      : c.unread_count + 1,
+                }
                 : c,
             ),
           );
@@ -224,10 +224,10 @@ export default function InboxPage() {
             prev.map((c) =>
               c.id === conv.id
                 ? {
-                    ...c,
-                    ...conv,
-                    unread_count: isActive ? 0 : conv.unread_count,
-                  }
+                  ...c,
+                  ...conv,
+                  unread_count: isActive ? 0 : conv.unread_count,
+                }
                 : c,
             ),
           );
@@ -304,7 +304,7 @@ export default function InboxPage() {
   }, []);
 
   /**
-   * Periodic resync safety net — refreshes active thread and list every 5 seconds
+   * Periodic resync safety net — refreshes active thread and list every 20 seconds
    * when the page is visible, acting as a fallback for slow/blocked websocket events.
    * Also polls /api/whatsapp/config?quick=true to keep the Vercel server warm so webhooks
    * are delivered instantly without cold-start timeouts.
@@ -329,7 +329,7 @@ export default function InboxPage() {
         setResyncToken((n) => n + 1);
         checkStatus();
       }
-    }, 5000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [user, loading]);
 
