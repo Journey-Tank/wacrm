@@ -60,8 +60,10 @@ function supabaseAdmin() {
  *   { connected: false, reason: 'token_corrupted',  message: '...', needs_reset: true }
  *   { connected: false, reason: 'meta_api_error',   message: '...' }
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const quick = searchParams.get('quick') === 'true'
     const supabase = await createClient()
 
     const {
@@ -127,6 +129,11 @@ export async function GET() {
         },
         { status: 200 }
       )
+    }
+
+    // If quick validation requested, return connected status early to save Meta API rate limits
+    if (quick) {
+      return NextResponse.json({ connected: config.status === 'connected', quick: true })
     }
 
     // Validate credentials against Meta

@@ -123,45 +123,7 @@ export default function InboxPage() {
     }
   }, []);
 
-  // Check WhatsApp connection status on mount
-  useEffect(() => {
-    const checkConnection = async () => {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const user = session?.user;
 
-      if (!user) return;
-
-      // whatsapp_config is one-row-per-account post-multi-user, so
-      // the previous `.eq('user_id', user.id)` would miss the row
-      // for any teammate who didn't personally save the config —
-      // the "WhatsApp not connected" banner would show in the
-      // shared inbox even though the admin had it configured.
-      // Resolve account_id via the profile and query by that.
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("account_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      const accountId = profile?.account_id as string | undefined;
-      if (!accountId) {
-        setWhatsappConnected(false);
-        return;
-      }
-
-      const { data } = await supabase
-        .from("whatsapp_config")
-        .select("status")
-        .eq("account_id", accountId)
-        .maybeSingle();
-
-      setWhatsappConnected(data?.status === "connected");
-    };
-
-    checkConnection();
-  }, []);
 
   // Handle realtime message events
   const handleMessageEvent = useCallback(
@@ -344,15 +306,32 @@ export default function InboxPage() {
   /**
    * Periodic resync safety net — refreshes active thread and list every 5 seconds
    * when the page is visible, acting as a fallback for slow/blocked websocket events.
+   * Also polls /api/whatsapp/config?quick=true to keep the Vercel server warm so webhooks
+   * are delivered instantly without cold-start timeouts.
    */
   useEffect(() => {
+    if (loading || !user) return;
+
+    const checkStatus = async () => {
+      try {
+        const res = await fetch("/api/whatsapp/config?quick=true");
+        if (res.status === 401) return;
+        const data = await res.json();
+        setWhatsappConnected(data.connected === true);
+      } catch (err) {
+        console.error("Failed to check WhatsApp config:", err);
+      }
+    };
+    checkStatus();
+
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") {
         setResyncToken((n) => n + 1);
+        checkStatus();
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user, loading]);
 
   /**
    * Manual refresh trigger for the thread-header refresh button.
