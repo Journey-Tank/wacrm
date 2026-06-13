@@ -108,8 +108,8 @@ interface SidebarProps {
 
 export function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { profile, profileLoading, account, accountRole, signOut } = useAuth();
-  const totalUnread = useTotalUnread();
+  const { profile, profileLoading, account, accountRole, signOut, loading, user } = useAuth();
+  const totalUnread = useTotalUnread({ enabled: !loading && !!user });
   // Only surface the account-name strip when it actually carries
   // information. A solo user's personal account is named after them
   // (the 017 signup trigger seeds it from `full_name`), so showing it

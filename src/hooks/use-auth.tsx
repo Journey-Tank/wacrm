@@ -231,6 +231,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const currentUser = session?.user ?? null;
         setUser(currentUser);
 
+        if (session?.access_token) {
+          supabase.realtime.setAuth(session.access_token);
+        }
+
         if (currentUser) {
           // Don't block session loading on profile fetch — chrome
           // (header, sidebar) can render from the user object alone,
@@ -259,6 +263,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
       const currentUser = session?.user ?? null;
       setUser(currentUser);
+
+      if (session?.access_token) {
+        supabase.realtime.setAuth(session.access_token);
+      } else {
+        supabase.realtime.setAuth(null);
+      }
 
       if (currentUser) {
         fetchProfile(currentUser.id);
