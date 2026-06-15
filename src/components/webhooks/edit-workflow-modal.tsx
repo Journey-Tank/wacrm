@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
-import { Plus, Trash2, X, Info, Paperclip, Upload, Loader2 } from 'lucide-react';
+import { Plus, Trash2, X, Info, Paperclip, Upload, Loader2, ArrowLeft } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -350,23 +350,25 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
   const selectedTmpl = templates.find((t) => t.name === selectedTemplateId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-      <div className="flex h-full max-h-[85vh] w-full max-w-2xl flex-col rounded-xl border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
-        {/* Modal Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-800 bg-slate-900 px-6 py-4">
+    <div className="flex w-full flex-col rounded-xl border border-slate-800 bg-slate-900 shadow-xl overflow-hidden">
+      {/* Form Header */}
+      <div className="flex shrink-0 items-center justify-between border-b border-slate-800 bg-slate-900 px-6 py-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onClose}
+            className="rounded-md text-slate-400 hover:bg-slate-800 hover:text-white p-1.5 flex items-center justify-center transition-colors"
+            title="Back to list"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
           <h3 className="text-base font-semibold text-white">
             {isEditing ? `Edit Workflow: ${workflow.name}` : 'Create New Workflow'}
           </h3>
-          <button
-            onClick={onClose}
-            className="rounded-md text-slate-400 hover:bg-slate-800 hover:text-white p-1"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
+      </div>
 
-        {/* Modal Scrollable Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+      {/* Form Body */}
+      <div className="px-6 py-6 space-y-6">
           {/* General Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -843,7 +845,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
           </div>
         </div>
 
-        {/* Modal Footer */}
+        {/* Form Footer */}
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-800 bg-slate-900 px-6 py-4">
           <Button
             onClick={onClose}
@@ -862,6 +864,5 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
           </Button>
         </div>
       </div>
-    </div>
   );
 }

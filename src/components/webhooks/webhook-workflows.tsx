@@ -12,8 +12,8 @@ export function WebhookWorkflows() {
   const [isConfigured, setIsConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // View State (list or inline form)
+  const [view, setView] = useState<'list' | 'edit' | 'create'>('list');
   const [selectedWorkflow, setSelectedWorkflow] = useState<any | null>(null);
 
   useEffect(() => {
@@ -112,12 +112,12 @@ export function WebhookWorkflows() {
       return;
     }
     setSelectedWorkflow(null);
-    setIsModalOpen(true);
+    setView('create');
   };
 
   const openEditModal = (workflow: any) => {
     setSelectedWorkflow(workflow);
-    setIsModalOpen(true);
+    setView('edit');
   };
 
   if (loading) {
@@ -125,6 +125,20 @@ export function WebhookWorkflows() {
       <div className="flex h-48 items-center justify-center">
         <RefreshCw className="h-6 w-6 animate-spin text-slate-500" />
       </div>
+    );
+  }
+
+  if (view !== 'list') {
+    return (
+      <EditWorkflowModal
+        workflow={selectedWorkflow}
+        lastPayload={lastPayload}
+        onClose={() => setView('list')}
+        onSave={() => {
+          setView('list');
+          loadData();
+        }}
+      />
     );
   }
 
@@ -247,17 +261,6 @@ export function WebhookWorkflows() {
         </div>
       )}
 
-      {isModalOpen && (
-        <EditWorkflowModal
-          workflow={selectedWorkflow}
-          lastPayload={lastPayload}
-          onClose={() => setIsModalOpen(false)}
-          onSave={() => {
-            setIsModalOpen(false);
-            loadData();
-          }}
-        />
-      )}
     </div>
   );
 }
