@@ -22,6 +22,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
   const [isActive, setIsActive] = useState(true);
   const [recipientNameField, setRecipientNameField] = useState('');
   const [recipientPhoneField, setRecipientPhoneField] = useState('');
+  const [createContacts, setCreateContacts] = useState(true);
   
   // Conditions
   const [matchType, setMatchType] = useState<'all' | 'any'>('all');
@@ -70,6 +71,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
       setIsActive(workflow.is_active);
       setRecipientNameField(workflow.recipient_name_field);
       setRecipientPhoneField(workflow.recipient_phone_field);
+      setCreateContacts(workflow.create_contacts !== false);
 
       const condsObj = workflow.conditions || {};
       setMatchType(condsObj.matchType === 'any' ? 'any' : 'all');
@@ -289,6 +291,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
         is_active: isActive,
         recipient_name_field: recipientNameField,
         recipient_phone_field: recipientPhoneField,
+        create_contacts: createContacts,
         conditions: {
           matchType,
           rules: conditions
@@ -469,6 +472,16 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg bg-slate-950/30 border border-slate-800/80 p-3.5 mt-2">
+              <div className="space-y-0.5">
+                <label className="text-xs font-semibold text-white">Save incoming webhooks as contacts</label>
+                <p className="text-[11px] text-slate-400">
+                  If enabled, unrecognized phone numbers are saved to the database. Existing contacts are never duplicated.
+                </p>
+              </div>
+              <Switch checked={createContacts} onCheckedChange={setCreateContacts} />
             </div>
           </div>
 
