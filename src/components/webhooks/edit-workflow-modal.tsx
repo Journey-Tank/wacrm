@@ -44,7 +44,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
       const { data } = await supabase
         .from('message_templates')
         .select('*')
-        .eq('status', 'Approved')
+        .eq('status', 'APPROVED')
         .order('name');
       setTemplates(data || []);
     }
