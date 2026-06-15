@@ -34,6 +34,8 @@ export async function POST(
     return NextResponse.json({ error: 'Payload must be valid JSON' }, { status: 400 });
   }
 
+  let resolvedAccountId: string | null = null;
+
   try {
     // 1. Check if the ID belongs to a single workflow
     const { data: workflowRow } = await db
@@ -43,6 +45,7 @@ export async function POST(
       .maybeSingle();
 
     if (workflowRow) {
+      resolvedAccountId = workflowRow.account_id;
       const integration = workflowRow.integration;
       
       // Update integration's last_payload
@@ -77,6 +80,7 @@ export async function POST(
       .maybeSingle();
 
     if (integrationRow) {
+      resolvedAccountId = integrationRow.account_id;
       if (payload) {
         await db
           .from('webhook_integrations')
@@ -127,17 +131,18 @@ export async function POST(
     console.error('[webhooks] incoming trigger failed:', errorMsg);
 
     // Attempt logging failure for single workflow if we can identify it
-    try {
-      await db.from('webhook_logs').insert({
-        account_id: workflowId,
-        workflow_id: workflowId,
-        workflow_name: 'Webhook Error',
-        status: 'failed',
-        error_message: errorMsg,
-        payload: payload
-      });
-    } catch (logErr) {
-      console.error('[webhooks] logging failure failed:', logErr);
+    if (resolvedAccountId) {
+      try {
+        await db.from('webhook_logs').insert({
+          account_id: resolvedAccountId,
+          workflow_name: 'Webhook Error',
+          status: 'failed',
+          error_message: errorMsg,
+          payload: payload
+        });
+      } catch (logErr) {
+        console.error('[webhooks] logging failure failed:', logErr);
+      }
     }
 
     return NextResponse.json({ error: errorMsg }, { status: 500 });
@@ -147,280 +152,261 @@ export async function POST(
 // Single workflow execution runner
 async function executeWorkflow(workflow: any, integration: any, payload: any) {
   const db = supabaseAdmin();
+  let customerPhone = '';
+  let customerName = '';
 
-  // 1. Evaluate conditions
-  const condObj = workflow.conditions || {};
-  const conditions: WebhookCondition[] = Array.isArray(condObj.rules) ? condObj.rules : [];
-  const matchType: 'all' | 'any' = condObj.matchType === 'any' ? 'any' : 'all';
+  try {
+    // 1. Evaluate conditions
+    const condObj = workflow.conditions || {};
+    const conditions: WebhookCondition[] = Array.isArray(condObj.rules) ? condObj.rules : [];
+    const matchType: 'all' | 'any' = condObj.matchType === 'any' ? 'any' : 'all';
 
-  const conditionsMatch = evaluateConditions(payload, conditions, matchType);
-  if (!conditionsMatch) {
-    // Record a log with no_match status
-    await db.from('webhook_logs').insert({
-      account_id: workflow.account_id,
-      integration_id: integration.id,
-      workflow_id: workflow.id,
-      workflow_name: workflow.name,
-      status: 'no_match',
-      payload: payload,
-      error_message: 'Conditions did not match'
-    });
-    return { status: 'no_match', message: 'Conditions did not match' };
-  }
+    const conditionsMatch = evaluateConditions(payload, conditions, matchType);
+    if (!conditionsMatch) {
+      // Record a log with no_match status
+      await db.from('webhook_logs').insert({
+        account_id: workflow.account_id,
+        integration_id: integration.id,
+        workflow_id: workflow.id,
+        workflow_name: workflow.name,
+        status: 'no_match',
+        payload: payload,
+        error_message: 'Conditions did not match'
+      });
+      return { status: 'no_match', message: 'Conditions did not match' };
+    }
 
-  // 2. Resolve recipient phone and name
-  const phonePath = workflow.recipient_phone_field;
-  const rawPhone = getNestedValue(payload, phonePath);
-  if (!rawPhone) {
-    await db.from('webhook_logs').insert({
-      account_id: workflow.account_id,
-      integration_id: integration.id,
-      workflow_id: workflow.id,
-      workflow_name: workflow.name,
-      status: 'failed',
-      payload: payload,
-      error_message: `Recipient phone path "${phonePath}" resolved to empty value.`
-    });
-    throw new Error(`Recipient phone path "${phonePath}" resolved to empty value.`);
-  }
+    // 2. Resolve recipient phone and name
+    const phonePath = workflow.recipient_phone_field;
+    const rawPhone = getNestedValue(payload, phonePath);
+    if (!rawPhone) {
+      throw new Error(`Recipient phone path "${phonePath}" resolved to empty value.`);
+    }
 
-  const sanitizedPhone = sanitizePhoneForMeta(String(rawPhone));
-  if (!isValidE164(sanitizedPhone)) {
-    await db.from('webhook_logs').insert({
-      account_id: workflow.account_id,
-      integration_id: integration.id,
-      workflow_id: workflow.id,
-      workflow_name: workflow.name,
-      status: 'failed',
-      payload: payload,
-      customer_phone: String(rawPhone),
-      error_message: `Sanitized phone number "${sanitizedPhone}" is not valid E164 format.`
-    });
-    throw new Error(`Sanitized phone number "${sanitizedPhone}" is not valid E164 format.`);
-  }
+    const sanitizedPhone = sanitizePhoneForMeta(String(rawPhone));
+    if (!isValidE164(sanitizedPhone)) {
+      throw new Error(`Sanitized phone number "${sanitizedPhone}" is not valid E164 format.`);
+    }
+    customerPhone = sanitizedPhone;
 
-  const namePath = workflow.recipient_name_field;
-  const rawName = getNestedValue(payload, namePath);
-  const customerName = rawName ? String(rawName) : sanitizedPhone;
+    const namePath = workflow.recipient_name_field;
+    const rawName = getNestedValue(payload, namePath);
+    customerName = rawName ? String(rawName) : sanitizedPhone;
 
-  // 3. Resolve WhatsApp configuration
-  const configId = integration.whatsapp_config_id;
-  if (!configId) {
-    await db.from('webhook_logs').insert({
-      account_id: workflow.account_id,
-      integration_id: integration.id,
-      workflow_id: workflow.id,
-      workflow_name: workflow.name,
-      status: 'failed',
-      payload: payload,
-      customer_phone: sanitizedPhone,
-      customer_name: customerName,
-      error_message: 'No WhatsApp channel selected for integration.'
-    });
-    throw new Error('No WhatsApp channel selected for integration.');
-  }
+    // 3. Resolve WhatsApp configuration
+    const configId = integration.whatsapp_config_id;
+    if (!configId) {
+      throw new Error('No WhatsApp channel selected for integration.');
+    }
 
-  const { data: config, error: configErr } = await db
-    .from('whatsapp_config')
-    .select('*')
-    .eq('id', configId)
-    .maybeSingle();
+    const { data: config, error: configErr } = await db
+      .from('whatsapp_config')
+      .select('*')
+      .eq('id', configId)
+      .maybeSingle();
 
-  if (configErr || !config) {
-    await db.from('webhook_logs').insert({
-      account_id: workflow.account_id,
-      integration_id: integration.id,
-      workflow_id: workflow.id,
-      workflow_name: workflow.name,
-      status: 'failed',
-      payload: payload,
-      customer_phone: sanitizedPhone,
-      customer_name: customerName,
-      error_message: 'WhatsApp configuration record not found.'
-    });
-    throw new Error('WhatsApp configuration record not found.');
-  }
+    if (configErr || !config) {
+      throw new Error('WhatsApp configuration record not found.');
+    }
 
-  const accessToken = decrypt(config.access_token);
+    const accessToken = decrypt(config.access_token);
 
-  // 4. Execute actions (e.g. Send template)
-  const actions = workflow.actions || [];
-  const templateAction = actions.find((act: any) => act.type === 'send_template');
+    // 4. Execute actions (e.g. Send template)
+    const actions = workflow.actions || [];
+    const templateAction = actions.find((act: any) => act.type === 'send_template');
 
-  if (!templateAction) {
-    await db.from('webhook_logs').insert({
-      account_id: workflow.account_id,
-      integration_id: integration.id,
-      workflow_id: workflow.id,
-      workflow_name: workflow.name,
-      status: 'failed',
-      payload: payload,
-      customer_phone: sanitizedPhone,
-      customer_name: customerName,
-      error_message: 'No template action defined for this workflow.'
-    });
-    throw new Error('No template action defined for this workflow.');
-  }
+    if (!templateAction) {
+      throw new Error('No template action defined for this workflow.');
+    }
 
-  const templateName = templateAction.template_name;
-  const language = templateAction.language || 'en_US';
+    const templateName = templateAction.template_name;
+    const language = templateAction.language || 'en_US';
 
-  // Load template row
-  const { data: templateRow } = await db
-    .from('message_templates')
-    .select('*')
-    .eq('account_id', workflow.account_id)
-    .eq('name', templateName)
-    .eq('language', language)
-    .maybeSingle();
+    // Load template row
+    const { data: templateRow } = await db
+      .from('message_templates')
+      .select('*')
+      .eq('account_id', workflow.account_id)
+      .eq('name', templateName)
+      .eq('language', language)
+      .maybeSingle();
 
-  // Resolve template parameters from payload mapping
-  const mappings = templateAction.mappings || {};
-  const bodyParams = Array.isArray(mappings.body)
-    ? mappings.body.map((m: any) => resolveMapping(payload, m))
-    : [];
-  const headerText = mappings.headerText
-    ? resolveMapping(payload, mappings.headerText)
-    : undefined;
+    // Resolve template parameters from payload mapping
+    const mappings = templateAction.mappings || {};
+    
+    // Meta requires non-empty strings for all parameter values. If a mapped field is missing/empty, fallback to a space ' '
+    const bodyParams = Array.isArray(mappings.body)
+      ? mappings.body.map((m: any) => {
+          const val = resolveMapping(payload, m);
+          return val ? val.trim() : ' ';
+        })
+      : [];
+    
+    const headerText = mappings.headerText
+      ? resolveMapping(payload, mappings.headerText)?.trim() || ' '
+      : undefined;
 
-  const headerMediaUrl = mappings.headerMedia
-    ? resolveMapping(payload, mappings.headerMedia)
-    : undefined;
+    const headerMediaUrl = mappings.headerMedia
+      ? resolveMapping(payload, mappings.headerMedia)?.trim() || ' '
+      : undefined;
 
-  const buttonParams: Record<number, string> = {};
-  if (mappings.buttons) {
-    for (const idx in mappings.buttons) {
-      const numIdx = parseInt(idx, 10);
-      if (!isNaN(numIdx) && mappings.buttons[idx]) {
-        buttonParams[numIdx] = resolveMapping(payload, mappings.buttons[idx]);
+    const buttonParams: Record<number, string> = {};
+    if (mappings.buttons) {
+      for (const idx in mappings.buttons) {
+        const numIdx = parseInt(idx, 10);
+        if (!isNaN(numIdx) && mappings.buttons[idx]) {
+          buttonParams[numIdx] = resolveMapping(payload, mappings.buttons[idx])?.trim() || ' ';
+        }
       }
     }
-  }
 
-  const templateParams = {
-    body: bodyParams,
-    headerText,
-    headerMediaUrl,
-    buttonParams
-  };
+    const templateParams = {
+      body: bodyParams,
+      headerText,
+      headerMediaUrl,
+      buttonParams
+    };
 
-  const adminUserId = config.user_id;
+    const adminUserId = config.user_id;
 
-  // 5. Resolve / create Contact & Conversation based on toggle
-  let contact: any = null;
-  let conversation: any = null;
-  const shouldCreateContacts = workflow.create_contacts !== false;
+    // 5. Resolve / create Contact & Conversation based on toggle
+    let contact: any = null;
+    let conversation: any = null;
+    const shouldCreateContacts = workflow.create_contacts !== false;
 
-  if (shouldCreateContacts) {
-    const contactOutcome = await findOrCreateContact(
-      workflow.account_id,
-      adminUserId,
-      sanitizedPhone,
-      customerName
-    );
-    if (contactOutcome) {
-      contact = contactOutcome.contact;
-      conversation = await findOrCreateConversation(
+    if (shouldCreateContacts) {
+      const contactOutcome = await findOrCreateContact(
         workflow.account_id,
         adminUserId,
-        contact.id
+        sanitizedPhone,
+        customerName
       );
-    }
-  } else {
-    // Look up existing contact only
-    const existingContact = await findExistingContact(db, workflow.account_id, sanitizedPhone);
-    if (existingContact) {
-      contact = existingContact;
-      if (customerName && customerName !== existingContact.name) {
-        await db.from('contacts').update({ name: customerName, updated_at: new Date().toISOString() }).eq('id', existingContact.id);
+      if (contactOutcome) {
+        contact = contactOutcome.contact;
+        conversation = await findOrCreateConversation(
+          workflow.account_id,
+          adminUserId,
+          contact.id
+        );
       }
-      conversation = await findOrCreateConversation(
-        workflow.account_id,
-        adminUserId,
-        existingContact.id
-      );
+    } else {
+      // Look up existing contact only
+      const existingContact = await findExistingContact(db, workflow.account_id, sanitizedPhone);
+      if (existingContact) {
+        contact = existingContact;
+        if (customerName && customerName !== existingContact.name) {
+          await db.from('contacts').update({ name: customerName, updated_at: new Date().toISOString() }).eq('id', existingContact.id);
+        }
+        conversation = await findOrCreateConversation(
+          workflow.account_id,
+          adminUserId,
+          existingContact.id
+        );
+      }
     }
-  }
 
-  // 6. Send via Meta API with variant retries
-  let waMessageId = '';
-  let workingPhone = sanitizedPhone;
-  let lastError: unknown = null;
-  const variants = phoneVariants(sanitizedPhone);
+    // 6. Send via Meta API with variant retries
+    let waMessageId = '';
+    let workingPhone = sanitizedPhone;
+    let lastError: unknown = null;
+    const variants = phoneVariants(sanitizedPhone);
 
-  const attempt = async (phone: string): Promise<string> => {
-    const result = await sendTemplateMessage({
-      phoneNumberId: config.phone_number_id,
-      accessToken,
-      to: phone,
-      templateName,
-      language,
-      template: templateRow ?? undefined,
-      messageParams: templateParams
+    const attempt = async (phone: string): Promise<string> => {
+      const result = await sendTemplateMessage({
+        phoneNumberId: config.phone_number_id,
+        accessToken,
+        to: phone,
+        templateName,
+        language,
+        template: templateRow ?? undefined,
+        messageParams: templateParams
+      });
+      return result.messageId;
+    };
+
+    for (const variant of variants) {
+      try {
+        waMessageId = await attempt(variant);
+        workingPhone = variant;
+        lastError = null;
+        break;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!isRecipientNotAllowedError(msg)) {
+          throw err;
+        }
+        lastError = err;
+      }
+    }
+
+    if (lastError) {
+      throw lastError;
+    }
+
+    // If a contact was created/found and conversation resolved, log in history
+    if (contact && conversation) {
+      if (workingPhone !== contact.phone) {
+        await db.from('contacts').update({ phone: workingPhone }).eq('id', contact.id);
+      }
+
+      const { error: msgErr } = await db.from('messages').insert({
+        conversation_id: conversation.id,
+        sender_type: 'bot',
+        content_type: 'template',
+        template_name: templateName,
+        message_id: waMessageId,
+        status: 'sent'
+      });
+      if (msgErr) {
+        console.error('[webhooks] db message insert failed:', msgErr.message);
+      }
+
+      await db
+        .from('conversations')
+        .update({
+          last_message_text: `[template:${templateName}]`,
+          last_message_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', conversation.id);
+    }
+
+    // 7. Create success log entry
+    await db.from('webhook_logs').insert({
+      account_id: workflow.account_id,
+      integration_id: integration.id,
+      workflow_id: workflow.id,
+      workflow_name: workflow.name,
+      customer_name: customerName,
+      customer_phone: workingPhone,
+      status: 'success',
+      payload: payload
     });
-    return result.messageId;
-  };
 
-  for (const variant of variants) {
+    return { success: true, message_id: waMessageId };
+  } catch (error: any) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[webhooks] executeWorkflow ${workflow.name} failed:`, errorMsg);
+    
+    // Log failure
     try {
-      waMessageId = await attempt(variant);
-      workingPhone = variant;
-      lastError = null;
-      break;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (!isRecipientNotAllowedError(msg)) {
-        throw err;
-      }
-      lastError = err;
+      await db.from('webhook_logs').insert({
+        account_id: workflow.account_id,
+        integration_id: integration.id,
+        workflow_id: workflow.id,
+        workflow_name: workflow.name,
+        customer_name: customerName || null,
+        customer_phone: customerPhone || null,
+        status: 'failed',
+        error_message: errorMsg,
+        payload: payload
+      });
+    } catch (logErr) {
+      console.error('[webhooks] executeWorkflow failed to insert error log:', logErr);
     }
+    
+    throw error;
   }
-
-  if (lastError) {
-    throw lastError;
-  }
-
-  // If a contact was created/found and conversation resolved, log in history
-  if (contact && conversation) {
-    if (workingPhone !== contact.phone) {
-      await db.from('contacts').update({ phone: workingPhone }).eq('id', contact.id);
-    }
-
-    const { error: msgErr } = await db.from('messages').insert({
-      conversation_id: conversation.id,
-      sender_type: 'bot',
-      content_type: 'template',
-      template_name: templateName,
-      message_id: waMessageId,
-      status: 'sent'
-    });
-    if (msgErr) {
-      console.error('[webhooks] db message insert failed:', msgErr.message);
-    }
-
-    await db
-      .from('conversations')
-      .update({
-        last_message_text: `[template:${templateName}]`,
-        last_message_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', conversation.id);
-  }
-
-  // 7. Create success log entry
-  await db.from('webhook_logs').insert({
-    account_id: workflow.account_id,
-    integration_id: integration.id,
-    workflow_id: workflow.id,
-    workflow_name: workflow.name,
-    customer_name: customerName,
-    customer_phone: workingPhone,
-    status: 'success',
-    payload: payload
-  });
-
-  return { success: true, message_id: waMessageId };
 }
 
 // Local findOrCreateContact & findOrCreateConversation helpers mirrors webhook/route.ts
