@@ -96,8 +96,16 @@ export function evaluateConditions(
  */
 export function resolveMapping(payload: any, mapping: WebhookMapping): string {
   if (!mapping) return '';
-  if (mapping.type === 'static' || mapping.type === 'upload') {
+  if (mapping.type === 'upload') {
     return mapping.value;
+  }
+  if (mapping.type === 'static') {
+    // Replace dynamic variables in static text like {{customer.name}} or {{lead.name}}
+    return mapping.value.replace(/\{\{([^}]+)\}\}/g, (_, path) => {
+      const trimmedPath = path.trim();
+      const val = getNestedValue(payload, trimmedPath);
+      return val !== undefined && val !== null ? String(val) : '';
+    });
   }
   const val = getNestedValue(payload, mapping.value);
   return val !== undefined && val !== null ? String(val) : '';

@@ -356,7 +356,15 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
       const mapping = mappings.find((m) => m.index === index);
       if (!mapping) return `{{${numStr}}}`;
       if (mapping.type === 'static') {
-        return mapping.value || `{{${numStr}}}`;
+        const val = mapping.value || '';
+        // Substitute variables inside static text e.g. {{customer.name}}
+        return val.replace(/\{\{([^}]+)\}\}/g, (__: string, path: string) => {
+          if (lastPayload) {
+            const resolvedVal = getNestedValue(lastPayload, path.trim());
+            if (resolvedVal !== undefined && resolvedVal !== null) return String(resolvedVal);
+          }
+          return `[${path}]`;
+        });
       }
       if (mapping.value) {
         if (lastPayload) {
@@ -374,7 +382,14 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
     if (!mapping) return headerText;
     return headerText.replace(/\{\{1\}\}/g, () => {
       if (mapping.type === 'static') {
-        return mapping.value || '{{1}}';
+        const val = mapping.value || '';
+        return val.replace(/\{\{([^}]+)\}\}/g, (__: string, path: string) => {
+          if (lastPayload) {
+            const resolvedVal = getNestedValue(lastPayload, path.trim());
+            if (resolvedVal !== undefined && resolvedVal !== null) return String(resolvedVal);
+          }
+          return `[${path}]`;
+        });
       }
       if (mapping.value) {
         if (lastPayload) {
@@ -767,12 +782,44 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                     ))}
                                   </select>
                                 ) : (
-                                  <Input
-                                    value={headerMapping.value}
-                                    onChange={(e) => setHeaderMapping({ ...headerMapping, value: e.target.value })}
-                                    placeholder="Static text"
-                                    className="flex-1 bg-slate-900 text-white border-slate-800 py-1 h-8 text-xs focus:border-primary"
-                                  />
+                                  <div className="flex-1 flex gap-2 items-center">
+                                    <Input
+                                      id="header-static-input"
+                                      value={headerMapping.value}
+                                      onChange={(e) => setHeaderMapping({ ...headerMapping, value: e.target.value })}
+                                      placeholder="Static text (use {{path}} for variables)"
+                                      className="flex-1 bg-slate-900 text-white border-slate-800 py-1 h-8 text-xs focus:border-primary"
+                                    />
+                                    <select
+                                      onChange={(e) => {
+                                        const path = e.target.value;
+                                        if (path) {
+                                          const inputEl = document.getElementById("header-static-input") as HTMLInputElement;
+                                          const insertText = `{{${path}}}`;
+                                          let newValue = headerMapping.value;
+                                          if (inputEl) {
+                                            const start = inputEl.selectionStart ?? newValue.length;
+                                            const end = inputEl.selectionEnd ?? newValue.length;
+                                            newValue = newValue.substring(0, start) + insertText + newValue.substring(end);
+                                            setTimeout(() => {
+                                              inputEl.focus();
+                                              inputEl.setSelectionRange(start + insertText.length, start + insertText.length);
+                                            }, 0);
+                                          } else {
+                                            newValue += insertText;
+                                          }
+                                          setHeaderMapping({ ...headerMapping, value: newValue });
+                                          e.target.value = ''; // Reset select
+                                        }
+                                      }}
+                                      className="rounded border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] text-slate-300 hover:text-white cursor-pointer w-28 h-8"
+                                    >
+                                      <option value="">+ Variable</option>
+                                      {availablePaths.map((path) => (
+                                        <option key={path} value={path}>{path}</option>
+                                      ))}
+                                    </select>
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -805,12 +852,44 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                       ))}
                                     </select>
                                   ) : (
-                                    <Input
-                                      value={m.value}
-                                      onChange={(e) => updateBodyMapping(m.index, 'value', e.target.value)}
-                                      placeholder="Static text"
-                                      className="flex-1 bg-slate-900 text-white border-slate-800 py-1 h-8 text-xs focus:border-primary"
-                                    />
+                                    <div className="flex-1 flex gap-2 items-center">
+                                      <Input
+                                        id={`body-static-input-${m.index}`}
+                                        value={m.value}
+                                        onChange={(e) => updateBodyMapping(m.index, 'value', e.target.value)}
+                                        placeholder="Static text (use {{path}} for variables)"
+                                        className="flex-1 bg-slate-900 text-white border-slate-800 py-1 h-8 text-xs focus:border-primary"
+                                      />
+                                      <select
+                                        onChange={(e) => {
+                                          const path = e.target.value;
+                                          if (path) {
+                                            const inputEl = document.getElementById(`body-static-input-${m.index}`) as HTMLInputElement;
+                                            const insertText = `{{${path}}}`;
+                                            let newValue = m.value;
+                                            if (inputEl) {
+                                              const start = inputEl.selectionStart ?? newValue.length;
+                                              const end = inputEl.selectionEnd ?? newValue.length;
+                                              newValue = newValue.substring(0, start) + insertText + newValue.substring(end);
+                                              setTimeout(() => {
+                                                inputEl.focus();
+                                                inputEl.setSelectionRange(start + insertText.length, start + insertText.length);
+                                              }, 0);
+                                            } else {
+                                              newValue += insertText;
+                                            }
+                                            updateBodyMapping(m.index, 'value', newValue);
+                                            e.target.value = ''; // Reset select
+                                          }
+                                        }}
+                                        className="rounded border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] text-slate-300 hover:text-white cursor-pointer w-28 h-8"
+                                      >
+                                        <option value="">+ Variable</option>
+                                        {availablePaths.map((path) => (
+                                          <option key={path} value={path}>{path}</option>
+                                        ))}
+                                      </select>
+                                    </div>
                                   )}
                                 </div>
                               ))}
@@ -977,12 +1056,44 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                       ))}
                                     </select>
                                   ) : (
-                                    <Input
-                                      value={buttonMappings[idx]?.value || ''}
-                                      onChange={(e) => updateButtonMapping(idx, 'value', e.target.value)}
-                                      placeholder="Static payload value"
-                                      className="flex-1 bg-slate-900 text-white border-slate-800 py-1 h-8 text-xs focus:border-primary"
-                                    />
+                                    <div className="flex-1 flex gap-2 items-center">
+                                      <Input
+                                        id={`button-static-input-${idx}`}
+                                        value={buttonMappings[idx]?.value || ''}
+                                        onChange={(e) => updateButtonMapping(idx, 'value', e.target.value)}
+                                        placeholder="Static payload value (use {{path}} for variables)"
+                                        className="flex-1 bg-slate-900 text-white border-slate-800 py-1 h-8 text-xs focus:border-primary"
+                                      />
+                                      <select
+                                        onChange={(e) => {
+                                          const path = e.target.value;
+                                          if (path) {
+                                            const inputEl = document.getElementById(`button-static-input-${idx}`) as HTMLInputElement;
+                                            const insertText = `{{${path}}}`;
+                                            let newValue = buttonMappings[idx]?.value || '';
+                                            if (inputEl) {
+                                              const start = inputEl.selectionStart ?? newValue.length;
+                                              const end = inputEl.selectionEnd ?? newValue.length;
+                                              newValue = newValue.substring(0, start) + insertText + newValue.substring(end);
+                                              setTimeout(() => {
+                                                inputEl.focus();
+                                                inputEl.setSelectionRange(start + insertText.length, start + insertText.length);
+                                              }, 0);
+                                            } else {
+                                              newValue += insertText;
+                                            }
+                                            updateButtonMapping(idx, 'value', newValue);
+                                            e.target.value = ''; // Reset select
+                                          }
+                                        }}
+                                        className="rounded border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] text-slate-300 hover:text-white cursor-pointer w-28 h-8"
+                                      >
+                                        <option value="">+ Variable</option>
+                                        {availablePaths.map((path) => (
+                                          <option key={path} value={path}>{path}</option>
+                                        ))}
+                                      </select>
+                                    </div>
                                   )}
                                 </div>
                               </div>
