@@ -63,16 +63,16 @@ export type MetaSendComponent =
 
 type MetaSendParameter =
   | { type: 'text'; text: string }
-  | { type: 'image'; image: { link?: string; id?: string } }
-  | { type: 'video'; video: { link?: string; id?: string } }
-  | { type: 'document'; document: { link?: string; id?: string } }
+  | { type: 'image'; image: { link?: string; id?: string | number } }
+  | { type: 'video'; video: { link?: string; id?: string | number } }
+  | { type: 'document'; document: { link?: string; id?: string | number } }
   | { type: 'coupon_code'; coupon_code: string }
   | { type: 'payload'; payload: string };
 
 function buildHeaderComponent(
   template: MessageTemplate,
   params: SendTimeParams,
-): MetaSendComponent | null {
+ ): MetaSendComponent | null {
   const headerType = template.header_type;
   if (!headerType) return null;
 
@@ -104,7 +104,18 @@ function buildHeaderComponent(
       `${headerType} header requires a media link or id at send time — set header_media_url on the template or pass headerMediaUrl/headerMediaId.`,
     );
   }
-  const mediaPayload: { link?: string; id?: string } = id ? { id } : { link };
+  
+  let mediaPayload: { link?: string; id?: string | number } = {};
+  if (id) {
+    if (typeof id === 'string' && /^\d+$/.test(id)) {
+      mediaPayload = { id: parseInt(id, 10) };
+    } else {
+      mediaPayload = { id };
+    }
+  } else {
+    mediaPayload = { link };
+  }
+
   return {
     type: 'header',
     parameters: [
