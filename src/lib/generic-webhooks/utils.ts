@@ -9,7 +9,7 @@ export interface WebhookCondition {
 }
 
 export interface WebhookMapping {
-  type: 'payload' | 'static';
+  type: 'payload' | 'static' | 'upload';
   value: string;
 }
 
@@ -96,7 +96,7 @@ export function evaluateConditions(
  */
 export function resolveMapping(payload: any, mapping: WebhookMapping): string {
   if (!mapping) return '';
-  if (mapping.type === 'static') {
+  if (mapping.type === 'static' || mapping.type === 'upload') {
     return mapping.value;
   }
   const val = getNestedValue(payload, mapping.value);

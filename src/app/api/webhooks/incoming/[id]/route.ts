@@ -231,6 +231,10 @@ export async function POST(
       ? resolveMapping(payload, mappings.headerText)
       : undefined;
     
+    const headerMediaUrl = mappings.headerMedia
+      ? resolveMapping(payload, mappings.headerMedia)
+      : undefined;
+    
     const buttonParams: Record<number, string> = {};
     if (mappings.buttons) {
       for (const idx in mappings.buttons) {
@@ -244,6 +248,7 @@ export async function POST(
     const templateParams = {
       body: bodyParams,
       headerText,
+      headerMediaUrl,
       buttonParams
     };
 
