@@ -95,7 +95,7 @@ const STEP_META: Record<AutomationStepType, StepMeta> = {
   assign_conversation: { label: "Assign Conversation", icon: UserCheck, border: "border-l-primary" },
   update_contact_field: { label: "Update Contact Field", icon: PencilLine, border: "border-l-primary" },
   create_deal: { label: "Create Deal", icon: Briefcase, border: "border-l-primary" },
-  wait: { label: "Wait", icon: Hourglass, border: "border-l-slate-500" },
+  wait: { label: "Wait", icon: Hourglass, border: "border-l-border" },
   condition: { label: "Condition (If/Else)", icon: GitBranch, border: "border-l-amber-500" },
   send_webhook: { label: "Send Webhook", icon: Webhook, border: "border-l-primary" },
   close_conversation: { label: "Close Conversation", icon: CircleSlash, border: "border-l-primary" },
@@ -167,7 +167,7 @@ function blankConfig(type: AutomationStepType): Record<string, unknown> {
 }
 
 // ------------------------------------------------------------
-// Account resources (tags, members, approved templates)
+// Account resources (tags, members, approved templates, pipelines)
 //
 // Loaded once at the builder root and shared via context so the
 // tag / agent / template pickers below can offer existing resources
@@ -181,6 +181,20 @@ interface AutomationResources {
   members: AccountMember[]
   templates: MessageTemplate[]
   customFields: CustomField[]
+  pipelines: PipelineOption[]
+  stages: PipelineStageOption[]
+}
+
+interface PipelineOption {
+  id: string
+  name: string
+}
+
+interface PipelineStageOption {
+  id: string
+  name: string
+  pipeline_id: string
+  position: number
 }
 
 const ResourcesContext = createContext<AutomationResources>({
@@ -188,6 +202,8 @@ const ResourcesContext = createContext<AutomationResources>({
   members: [],
   templates: [],
   customFields: [],
+  pipelines: [],
+  stages: [],
 })
 
 function useResources(): AutomationResources {
@@ -199,6 +215,8 @@ function ResourcesProvider({ children }: { children: ReactNode }) {
   const [members, setMembers] = useState<AccountMember[]>([])
   const [templates, setTemplates] = useState<MessageTemplate[]>([])
   const [customFields, setCustomFields] = useState<CustomField[]>([])
+  const [pipelines, setPipelines] = useState<PipelineOption[]>([])
+  const [stages, setStages] = useState<PipelineStageOption[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -209,19 +227,27 @@ function ResourcesProvider({ children }: { children: ReactNode }) {
     // actually be sent (anything else 400s at send time), matching the
     // broadcast picker.
     void (async () => {
-      const [tagsRes, templatesRes, customFieldsRes] = await Promise.all([
-        supabase.from("tags").select("*").order("name"),
-        supabase
-          .from("message_templates")
-          .select("*")
-          .eq("status", "APPROVED")
-          .order("name"),
-        supabase.from("custom_fields").select("*").order("field_name"),
-      ])
+      const [tagsRes, templatesRes, customFieldsRes, pipelinesRes, stagesRes] =
+        await Promise.all([
+          supabase.from("tags").select("*").order("name"),
+          supabase
+            .from("message_templates")
+            .select("*")
+            .eq("status", "APPROVED")
+            .order("name"),
+          supabase.from("custom_fields").select("*").order("field_name"),
+          supabase.from("pipelines").select("id, name").order("name"),
+          supabase
+            .from("pipeline_stages")
+            .select("id, name, pipeline_id, position")
+            .order("position"),
+        ])
       if (cancelled) return
       setTags((tagsRes.data as TagRecord[] | null) ?? [])
       setTemplates((templatesRes.data as MessageTemplate[] | null) ?? [])
       setCustomFields((customFieldsRes.data as CustomField[] | null) ?? [])
+      setPipelines((pipelinesRes.data as PipelineOption[] | null) ?? [])
+      setStages((stagesRes.data as PipelineStageOption[] | null) ?? [])
     })()
 
     // Members go through the API so we inherit its email-visibility
@@ -244,14 +270,16 @@ function ResourcesProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <ResourcesContext.Provider value={{ tags, members, templates, customFields }}>
+    <ResourcesContext.Provider
+      value={{ tags, members, templates, customFields, pipelines, stages }}
+    >
       {children}
     </ResourcesContext.Provider>
   )
 }
 
 const SELECT_CLASS =
-  "w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-white focus:border-primary focus:outline-none"
+  "w-full rounded-md border border-border bg-muted px-2 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none"
 
 /** Tag dropdown by name + color, storing the tag's id. Falls back to a
  *  raw id input when no tags exist yet. */
@@ -269,7 +297,7 @@ function TagSelect({
         placeholder="Tag id"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="bg-slate-800 text-white"
+        className="bg-muted text-foreground"
       />
     )
   }
@@ -277,7 +305,7 @@ function TagSelect({
   return (
     <div className="flex items-center gap-2">
       <span
-        className="h-3 w-3 shrink-0 rounded-full border border-slate-600"
+        className="h-3 w-3 shrink-0 rounded-full border border-border"
         style={{ backgroundColor: selected?.color ?? "transparent" }}
         aria-hidden
       />
@@ -358,7 +386,7 @@ function AgentSelect({
         placeholder="Agent id"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="bg-slate-800 text-white"
+        className="bg-muted text-foreground"
       />
     )
   }
@@ -379,6 +407,102 @@ function AgentSelect({
         <option value={value}>{value} (unknown agent)</option>
       )}
     </select>
+  )
+}
+
+/** Pipeline + stage picker for Create Deal. The automation stores ids because
+ *  the engine writes directly to deals, but authors should choose by name. */
+function DealPipelineFields({
+  pipelineId,
+  stageId,
+  onChange,
+}: {
+  pipelineId: string
+  stageId: string
+  onChange: (patch: { pipeline_id: string; stage_id: string }) => void
+}) {
+  const { pipelines, stages } = useResources()
+
+  if (pipelines.length === 0) {
+    return (
+      <>
+        <FieldBlock label="Pipeline id">
+          <Input
+            value={pipelineId}
+            onChange={(e) =>
+              onChange({ pipeline_id: e.target.value, stage_id: stageId })
+            }
+            className="bg-muted text-foreground"
+          />
+        </FieldBlock>
+        <FieldBlock label="Stage id">
+          <Input
+            value={stageId}
+            onChange={(e) =>
+              onChange({ pipeline_id: pipelineId, stage_id: e.target.value })
+            }
+            className="bg-muted text-foreground"
+          />
+        </FieldBlock>
+      </>
+    )
+  }
+
+  const selectedPipeline = pipelines.find((p) => p.id === pipelineId)
+  const stageOptions = stages.filter((s) => s.pipeline_id === pipelineId)
+  const selectedStage = stageOptions.find((s) => s.id === stageId)
+
+  return (
+    <>
+      <FieldBlock label="Pipeline">
+        <select
+          value={pipelineId}
+          onChange={(e) => {
+            const nextPipelineId = e.target.value
+            const firstStage = stages.find(
+              (s) => s.pipeline_id === nextPipelineId
+            )
+            onChange({
+              pipeline_id: nextPipelineId,
+              stage_id: firstStage?.id ?? "",
+            })
+          }}
+          className={SELECT_CLASS}
+        >
+          <option value="">Select a pipeline…</option>
+          {pipelines.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+          {pipelineId && !selectedPipeline && (
+            <option value={pipelineId}>{pipelineId} (unknown pipeline)</option>
+          )}
+        </select>
+      </FieldBlock>
+      <FieldBlock label="Stage">
+        <select
+          value={stageId}
+          onChange={(e) =>
+            onChange({ pipeline_id: pipelineId, stage_id: e.target.value })
+          }
+          className={SELECT_CLASS}
+          disabled={!pipelineId || stageOptions.length === 0}
+        >
+          <option value="">
+            {pipelineId ? "Select a stage…" : "Select a pipeline first…"}
+          </option>
+          {stageOptions.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+          {stageId && pipelineId && !selectedStage && (
+            <option value={stageId}>{stageId} (unknown stage)</option>
+          )}
+        </select>
+      </FieldBlock>
+    </>
   )
 }
 
@@ -405,7 +529,7 @@ function SendTemplateFields({
             onChange={(e) =>
               onChange({ template_name: e.target.value, language })
             }
-            className="bg-slate-800 text-white"
+            className="bg-muted text-foreground"
           />
         </FieldBlock>
         <FieldBlock label="Language">
@@ -414,7 +538,7 @@ function SendTemplateFields({
             onChange={(e) =>
               onChange({ template_name: templateName, language: e.target.value })
             }
-            className="bg-slate-800 text-white"
+            className="bg-muted text-foreground"
           />
         </FieldBlock>
       </>
@@ -548,15 +672,15 @@ export function AutomationBuilder({ initial }: { initial: BuilderInitial }) {
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-slate-950">
+    <div className="fixed inset-0 flex flex-col bg-background">
       {/* Top bar. At sub-sm widths the "Active" label is hidden and the
           switch moves to the right of the save button, so the name input
           gets maximum width. */}
-      <header className="flex flex-shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-900/80 px-3 py-3 sm:gap-3 sm:px-4">
+      <header className="flex flex-shrink-0 items-center gap-2 border-b border-border bg-card/80 px-3 py-3 sm:gap-3 sm:px-4">
         <button
           type="button"
           onClick={() => router.push("/automations")}
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           aria-label="Back to automations"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -565,9 +689,9 @@ export function AutomationBuilder({ initial }: { initial: BuilderInitial }) {
           value={state.name}
           onChange={(e) => patchTop("name", e.target.value)}
           placeholder="Untitled automation"
-          className="min-w-0 flex-1 rounded-md bg-transparent px-2 py-1 text-sm font-semibold text-white placeholder:text-slate-500 focus:bg-slate-800 focus:outline-none sm:text-base"
+          className="min-w-0 flex-1 rounded-md bg-transparent px-2 py-1 text-sm font-semibold text-foreground placeholder:text-muted-foreground focus:bg-muted focus:outline-none sm:text-base"
         />
-        <div className="flex items-center gap-2 text-xs text-slate-400">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="hidden sm:inline">Active</span>
           <Switch
             checked={state.is_active}
@@ -587,7 +711,7 @@ export function AutomationBuilder({ initial }: { initial: BuilderInitial }) {
 
       {/* Canvas */}
       <div className="relative flex-1 overflow-y-auto">
-        <div className="absolute inset-0 bg-[radial-gradient(circle,#1e293b_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none" />
         <div className="relative mx-auto flex max-w-2xl flex-col items-center gap-0 px-4 py-10">
           <ResourcesProvider>
             <TriggerCard
@@ -633,7 +757,7 @@ function TriggerCard({
     // Card width: full on mobile, fixed 320px on sm+. The canvas wrapper
     // (max-w-2xl + px-4) keeps this tidy on tablet/desktop.
     <div className="z-10 w-full max-w-[320px] sm:w-80">
-      <div className="rounded-lg border border-slate-800 border-l-4 border-l-blue-500 bg-slate-900 shadow-lg">
+      <div className="rounded-lg border border-border border-l-4 border-l-blue-500 bg-card shadow-lg">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -644,24 +768,24 @@ function TriggerCard({
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-[11px] uppercase tracking-wide text-blue-300">Trigger</div>
-            <div className="truncate text-sm font-medium text-white">
+            <div className="truncate text-sm font-medium text-foreground">
               {TRIGGER_OPTIONS.find((o) => o.value === type)?.label ?? type}
             </div>
           </div>
           <ChevronDown
-            className={cn("h-4 w-4 text-slate-400 transition-transform", open && "rotate-180")}
+            className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")}
           />
         </button>
         {open && (
-          <div className="space-y-3 border-t border-slate-800 px-4 py-3">
+          <div className="space-y-3 border-t border-border px-4 py-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-400">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 Trigger type
               </label>
               <select
                 value={type}
                 onChange={(e) => onTypeChange(e.target.value as AutomationTriggerType)}
-                className="w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-white focus:border-primary focus:outline-none"
+                className="w-full rounded-md border border-border bg-muted px-2 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none"
               >
                 {TRIGGER_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -669,7 +793,7 @@ function TriggerCard({
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-[11px] text-slate-500">
+              <p className="mt-1 text-[11px] text-muted-foreground">
                 {TRIGGER_OPTIONS.find((o) => o.value === type)?.hint}
               </p>
             </div>
@@ -681,7 +805,7 @@ function TriggerCard({
             )}
             {type === "tag_added" && (
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-400">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
                   Tag
                 </label>
                 <TagSelect
@@ -697,7 +821,7 @@ function TriggerCard({
                 onChange={(e) =>
                   onConfigChange({ ...config, schedule: e.target.value })
                 }
-                className="bg-slate-800 text-white"
+                className="bg-muted text-foreground"
               />
             )}
           </div>
@@ -723,6 +847,18 @@ function KeywordMatchConfig({
   // when the trigger type changes, so the seed stays in sync.
   const [draft, setDraft] = useState(keywords.join(", "))
 
+  // Persist the default the <select> displays. The dropdown falls back to
+  // "contains" for display, but leaving it untouched would otherwise omit
+  // match_type from the saved config — and activation validation then
+  // rejected it (trigger.match_type). Seed once on mount; the component
+  // remounts when the trigger type changes, matching the keywords draft.
+  useEffect(() => {
+    if (config?.match_type == null) {
+      onChange({ ...config, match_type: "contains" })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   function commit() {
     const parsed = draft
       .split(",")
@@ -735,7 +871,7 @@ function KeywordMatchConfig({
   return (
     <div className="space-y-2">
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-400">
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">
           Keywords (comma-separated)
         </label>
         <Input
@@ -749,17 +885,17 @@ function KeywordMatchConfig({
             }
           }}
           placeholder="e.g. pricing, demo request, talk to sales"
-          className="bg-slate-800 text-white"
+          className="bg-muted text-foreground"
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-400">
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">
           Match type
         </label>
         <select
           value={config?.match_type ?? "contains"}
           onChange={(e) => onChange({ ...config, match_type: e.target.value as "exact" | "contains" })}
-          className="w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-white focus:outline-none"
+          className="w-full rounded-md border border-border bg-muted px-2 py-1.5 text-sm text-foreground focus:outline-none"
         >
           <option value="contains">Contains</option>
           <option value="exact">Exact</option>
@@ -858,7 +994,7 @@ function StepRenderer({
       <div className={cn("z-10 flex flex-col", width)}>
         <div
           className={cn(
-            "rounded-lg border border-slate-800 border-l-4 bg-slate-900 shadow-lg",
+            "rounded-lg border border-border border-l-4 bg-card shadow-lg",
             meta.border,
           )}
         >
@@ -867,28 +1003,28 @@ function StepRenderer({
             onClick={() => props.setExpandedId(expanded ? null : step.cid)}
             className="flex w-full items-center gap-3 px-4 py-3 text-left"
           >
-            <GripVertical className="h-4 w-4 flex-shrink-0 text-slate-600" aria-hidden />
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-800 text-slate-300">
+            <GripVertical className="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden />
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
               <Icon className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] uppercase tracking-wide text-slate-400">
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
                 {isCondition ? "Condition" : step.step_type === "wait" ? "Wait" : "Action"}
               </div>
-              <div className="truncate text-sm font-medium text-white">{meta.label}</div>
-              <div className="truncate text-[11px] text-slate-500">{previewFor(step)}</div>
+              <div className="truncate text-sm font-medium text-foreground">{meta.label}</div>
+              <div className="truncate text-[11px] text-muted-foreground">{previewFor(step)}</div>
             </div>
             <ChevronDown
-              className={cn("h-4 w-4 text-slate-400 transition-transform", expanded && "rotate-180")}
+              className={cn("h-4 w-4 text-muted-foreground transition-transform", expanded && "rotate-180")}
             />
           </button>
           {expanded && (
-            <div className="border-t border-slate-800 px-4 py-3">
+            <div className="border-t border-border px-4 py-3">
               <StepEditor
                 step={step}
                 onChange={(next) => props.updateStep(path, () => next)}
               />
-              <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-800 pt-3">
+              <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
                 <div className="flex gap-1">
                   <Button
                     variant="ghost"
@@ -927,9 +1063,14 @@ function StepRenderer({
         )}
       </div>
 
-      <AddButton
-        onPick={(t) => props.addStepAt(parentScope, index + 1, t)}
-      />
+      {/* A condition branches into Yes/No (rendered above by
+          ConditionBranches), so it has no linear "continue" path — adding
+          the trailing connector here would produce a spurious third output. */}
+      {!isCondition && (
+        <AddButton
+          onPick={(t) => props.addStepAt(parentScope, index + 1, t)}
+        />
+      )}
     </>
   )
 }
@@ -990,17 +1131,17 @@ function BranchColumn({
 function AddButton({ onPick }: { onPick: (t: AutomationStepType) => void }) {
   return (
     <div className="relative flex flex-col items-center">
-      <div className="h-4 w-[2px] bg-slate-700" aria-hidden />
+      <div className="h-4 w-[2px] bg-border" aria-hidden />
       <DropdownMenu>
         <DropdownMenuTrigger
-          className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-dashed border-slate-700 bg-slate-950 text-slate-400 transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary data-[popup-open]:border-primary data-[popup-open]:bg-primary/20 data-[popup-open]:text-primary"
+          className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-dashed border-border bg-background text-muted-foreground transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary data-[popup-open]:border-primary data-[popup-open]:bg-primary/20 data-[popup-open]:text-primary"
           aria-label="Add step"
         >
           <Plus className="h-4 w-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"
-          className="max-h-80 min-w-56 overflow-y-auto border-slate-700 bg-slate-900"
+          className="max-h-80 min-w-56 overflow-y-auto border-border bg-popover"
         >
           {ADDABLE_STEPS.map((t) => {
             const Icon = STEP_META[t].icon
@@ -1013,7 +1154,7 @@ function AddButton({ onPick }: { onPick: (t: AutomationStepType) => void }) {
           })}
         </DropdownMenuContent>
       </DropdownMenu>
-      <div className="h-4 w-[2px] bg-slate-700" aria-hidden />
+      <div className="h-4 w-[2px] bg-border" aria-hidden />
     </div>
   )
 }
@@ -1041,7 +1182,7 @@ function StepEditor({
             value={(cfg.text as string) ?? ""}
             onChange={(e) => set({ text: e.target.value })}
             placeholder="Hi! Thanks for reaching out…"
-            className="min-h-24 bg-slate-800 text-white"
+            className="min-h-24 bg-muted text-foreground"
           />
         </FieldBlock>
       )
@@ -1070,7 +1211,7 @@ function StepEditor({
             <select
               value={(cfg.mode as string) ?? "round_robin"}
               onChange={(e) => set({ mode: e.target.value })}
-              className="w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-white"
+              className="w-full rounded-md border border-border bg-muted px-2 py-1.5 text-sm text-foreground"
             >
               <option value="round_robin">Round-robin</option>
               <option value="specific">Specific agent</option>
@@ -1100,7 +1241,7 @@ function StepEditor({
               value={(cfg.value as string) ?? ""}
               onChange={(e) => set({ value: e.target.value })}
               placeholder="Text or {{ vars.x }} / {{ message.text }}"
-              className="bg-slate-800 text-white"
+              className="bg-muted text-foreground"
             />
           </FieldBlock>
         </>
@@ -1108,25 +1249,16 @@ function StepEditor({
     case "create_deal":
       return (
         <>
-          <FieldBlock label="Pipeline id">
-            <Input
-              value={(cfg.pipeline_id as string) ?? ""}
-              onChange={(e) => set({ pipeline_id: e.target.value })}
-              className="bg-slate-800 text-white"
-            />
-          </FieldBlock>
-          <FieldBlock label="Stage id">
-            <Input
-              value={(cfg.stage_id as string) ?? ""}
-              onChange={(e) => set({ stage_id: e.target.value })}
-              className="bg-slate-800 text-white"
-            />
-          </FieldBlock>
+          <DealPipelineFields
+            pipelineId={(cfg.pipeline_id as string) ?? ""}
+            stageId={(cfg.stage_id as string) ?? ""}
+            onChange={(patch) => set(patch)}
+          />
           <FieldBlock label="Title">
             <Input
               value={(cfg.title as string) ?? ""}
               onChange={(e) => set({ title: e.target.value })}
-              className="bg-slate-800 text-white"
+              className="bg-muted text-foreground"
             />
           </FieldBlock>
           <FieldBlock label="Value">
@@ -1134,7 +1266,7 @@ function StepEditor({
               type="number"
               value={(cfg.value as number) ?? 0}
               onChange={(e) => set({ value: Number(e.target.value) })}
-              className="bg-slate-800 text-white"
+              className="bg-muted text-foreground"
             />
           </FieldBlock>
         </>
@@ -1148,14 +1280,14 @@ function StepEditor({
               min={1}
               value={(cfg.amount as number) ?? 1}
               onChange={(e) => set({ amount: Math.max(1, Number(e.target.value)) })}
-              className="bg-slate-800 text-white"
+              className="bg-muted text-foreground"
             />
           </FieldBlock>
           <FieldBlock label="Unit">
             <select
               value={(cfg.unit as string) ?? "hours"}
               onChange={(e) => set({ unit: e.target.value })}
-              className="w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-white"
+              className="w-full rounded-md border border-border bg-muted px-2 py-1.5 text-sm text-foreground"
             >
               <option value="minutes">Minutes</option>
               <option value="hours">Hours</option>
@@ -1171,7 +1303,7 @@ function StepEditor({
             <select
               value={(cfg.subject as string) ?? "tag_presence"}
               onChange={(e) => set({ subject: e.target.value })}
-              className="w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-white"
+              className="w-full rounded-md border border-border bg-muted px-2 py-1.5 text-sm text-foreground"
             >
               <option value="tag_presence">Tag presence</option>
               <option value="contact_field">Contact field</option>
@@ -1192,7 +1324,7 @@ function StepEditor({
               }
               value={(cfg.operand as string) ?? ""}
               onChange={(e) => set({ operand: e.target.value })}
-              className="bg-slate-800 text-white"
+              className="bg-muted text-foreground"
             />
           </FieldBlock>
           {(cfg.subject === "contact_field" || cfg.subject === "message_content") && (
@@ -1200,7 +1332,7 @@ function StepEditor({
               <Input
                 value={(cfg.value as string) ?? ""}
                 onChange={(e) => set({ value: e.target.value })}
-                className="bg-slate-800 text-white"
+                className="bg-muted text-foreground"
               />
             </FieldBlock>
           )}
@@ -1213,21 +1345,21 @@ function StepEditor({
             <Input
               value={(cfg.url as string) ?? ""}
               onChange={(e) => set({ url: e.target.value })}
-              className="bg-slate-800 text-white"
+              className="bg-muted text-foreground"
             />
           </FieldBlock>
           <FieldBlock label="Body template (JSON)">
             <Textarea
               value={(cfg.body_template as string) ?? ""}
               onChange={(e) => set({ body_template: e.target.value })}
-              className="min-h-20 bg-slate-800 font-mono text-xs text-white"
+              className="min-h-20 bg-muted font-mono text-xs text-foreground"
             />
           </FieldBlock>
         </>
       )
     case "close_conversation":
       return (
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Sets the conversation status to &quot;closed&quot;. No configuration needed.
         </p>
       )
@@ -1245,7 +1377,7 @@ function FieldBlock({
 }) {
   return (
     <div className="mb-2 last:mb-0">
-      <label className="mb-1 block text-xs font-medium text-slate-400">{label}</label>
+      <label className="mb-1 block text-xs font-medium text-muted-foreground">{label}</label>
       {children}
     </div>
   )

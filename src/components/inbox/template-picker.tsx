@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -131,10 +132,14 @@ export function TemplatePicker({
         if (!cancelled) { setTemplates([]); setLoading(false); }
         return;
       }
+
+      // Scope by RLS (message_templates_select → is_account_member), NOT by
+      // user_id. Templates are account-owned, so filtering on the caller's
+      // user_id hid templates that a teammate created — leaving them unable
+      // to send approved templates in a shared account.
       const { data, error } = await supabase
         .from("message_templates")
         .select("*")
-        .eq("user_id", user.id)
         .eq("status", "APPROVED")
         .order("created_at", { ascending: false });
       if (cancelled) return;
@@ -336,6 +341,11 @@ export function TemplatePicker({
               </Badge>
             )}
           </div>
+          <DialogDescription className="sr-only">
+            {selected
+              ? "Fill in the placeholders to render this template. Meta requires every variable to be set."
+              : "Pick an approved WhatsApp template to send to this contact."}
+          </DialogDescription>
         </DialogHeader>
 
         {/* Body */}

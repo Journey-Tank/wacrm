@@ -94,9 +94,17 @@ function buildHeaderComponent(
     };
   }
 
-  // Prefer explicit overrides from the caller
+  // image / video / document — Meta requires the media component on
+  // every send. Prefer the caller's explicit override; fall back to the
+  // template's stored public URL.
+  //
+  // NOTE: `template.header_handle` is intentionally NOT used here. It's a
+  // Resumable-Upload handle that's only valid as the *creation-time*
+  // sample (`example.header_handle`); it is NOT a reusable send-time
+  // media id, and passing it as `{ id }` makes Meta reject the send. Only
+  // an explicit `headerMediaId` (a real /media upload id) is honored.
   let mediaPayload: { link?: string; id?: string | number } = {};
-  
+
   if (params.headerMediaId) {
     const id = params.headerMediaId;
     if (typeof id === 'string' && /^\d+$/.test(id)) {
@@ -104,19 +112,10 @@ function buildHeaderComponent(
     } else {
       mediaPayload = { id };
     }
-  } else if (params.headerMediaUrl) {
-    mediaPayload = { link: params.headerMediaUrl };
-  } else if (template.header_handle && /^\d+$/.test(template.header_handle)) {
-    // Only use template header_handle if it is a numeric ID
-    mediaPayload = { id: parseInt(template.header_handle, 10) };
   } else {
-    // Fallback: check if either header_handle or header_media_url contains a valid URL
-    const fallbackLink = (template.header_handle && template.header_handle.startsWith('http'))
-      ? template.header_handle
-      : template.header_media_url;
-
-    if (fallbackLink) {
-      mediaPayload = { link: fallbackLink };
+    const link = params.headerMediaUrl ?? template.header_media_url;
+    if (link) {
+      mediaPayload = { link };
     } else {
       throw new Error(
         `${headerType} header requires a media link or id at send time — set header_media_url on the template or pass headerMediaUrl/headerMediaId.`,
