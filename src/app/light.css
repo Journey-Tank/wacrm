@@ -2,7 +2,7 @@
  * LIGHT MODE THEME
  * ============================================================ */
 
-html[data-theme="light"] {
+html[data-mode="light"] {
   --background: oklch(0.99 0.005 260); /* Clean white background */
   --foreground: oklch(0.12 0.01 260); /* Very dark gray text */
   --card: oklch(0.96 0.008 260); /* Light gray card */
