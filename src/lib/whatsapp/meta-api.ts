@@ -387,7 +387,11 @@ export async function sendTemplateMessage(
     messageParams,
     contextMessageId,
   } = args
-  const url = `${META_API_BASE}/${phoneNumberId}/messages`
+  const isMarketing =
+    template?.category === 'Marketing' ||
+    template?.category?.toUpperCase() === 'MARKETING'
+  const endpoint = isMarketing ? 'marketing_messages' : 'messages'
+  const url = `${META_API_BASE}/${phoneNumberId}/${endpoint}`
 
   const templatePayload: Record<string, unknown> = {
     name: templateName,
