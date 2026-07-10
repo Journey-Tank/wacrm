@@ -37,28 +37,28 @@ export function WebhookLogs() {
     switch (status) {
       case 'success':
         return (
-          <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 border border-emerald-500/20">
+          <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
             <CheckCircle className="h-3 w-3" />
             Success
           </span>
         );
       case 'failed':
         return (
-          <span className="inline-flex items-center gap-1 rounded bg-red-500/10 px-2.5 py-0.5 text-xs font-semibold text-red-400 border border-red-500/20">
+          <span className="inline-flex items-center gap-1 rounded bg-red-500/10 px-2.5 py-0.5 text-xs font-semibold text-red-600 dark:text-red-400 border border-red-500/20">
             <XCircle className="h-3 w-3" />
             Failed
           </span>
         );
       case 'no_match':
         return (
-          <span className="inline-flex items-center gap-1 rounded bg-slate-800 px-2.5 py-0.5 text-xs font-semibold text-slate-400 border border-slate-700">
+          <span className="inline-flex items-center gap-1 rounded bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-semibold text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
             <AlertCircle className="h-3 w-3" />
             No Match
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 rounded bg-slate-800 px-2.5 py-0.5 text-xs font-semibold text-slate-400">
+          <span className="inline-flex items-center gap-1 rounded bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-semibold text-slate-600 dark:text-slate-400">
             {status}
           </span>
         );
@@ -69,8 +69,8 @@ export function WebhookLogs() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Execution Logs</h3>
-          <p className="mt-0.5 text-xs text-slate-400">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider">Execution Logs</h3>
+          <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
             View history of webhook trigger execution results and diagnostic payloads.
           </p>
         </div>
@@ -79,7 +79,7 @@ export function WebhookLogs() {
           onClick={fetchLogs}
           variant="outline"
           disabled={loading}
-          className="border-slate-800 bg-slate-950 text-slate-300 hover:bg-slate-900 flex items-center gap-1.5"
+          className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 flex items-center gap-1.5"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -91,19 +91,19 @@ export function WebhookLogs() {
           <RefreshCw className="h-6 w-6 animate-spin text-slate-500" />
         </div>
       ) : logs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 p-12 text-center bg-slate-900/10">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-12 text-center bg-slate-50/50 dark:bg-slate-900/10">
           <Play className="h-10 w-10 text-slate-500" />
-          <h4 className="mt-4 text-sm font-semibold text-white">No Logs Found</h4>
-          <p className="mt-1 text-xs text-slate-400 max-w-sm">
+          <h4 className="mt-4 text-sm font-semibold text-slate-900 dark:text-white">No Logs Found</h4>
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400 max-w-sm">
             Webhook triggers will log execution details here when payloads hit your workflow URL.
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
+        <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-800/80 bg-slate-900/60 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <tr className="border-b border-slate-200 dark:border-slate-800/80 bg-slate-100/50 dark:bg-slate-900/60 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <th className="px-6 py-3">Date</th>
                   <th className="px-6 py-3">Workflow Name</th>
                   <th className="px-6 py-3">Customer Phone</th>
@@ -112,16 +112,16 @@ export function WebhookLogs() {
                   <th className="px-6 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-xs text-slate-300">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-xs text-slate-700 dark:text-slate-300">
                 {logs.map((log) => {
                   const isExpanded = expandedLogId === log.id;
                   return (
                     <React.Fragment key={log.id}>
-                      <tr className="hover:bg-slate-900/20">
-                        <td className="whitespace-nowrap px-6 py-4 font-mono text-[11px] text-slate-400">
+                      <tr className="hover:bg-slate-100/40 dark:hover:bg-slate-900/20">
+                        <td className="whitespace-nowrap px-6 py-4 font-mono text-[11px] text-slate-500 dark:text-slate-400">
                           {format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}
                         </td>
-                        <td className="px-6 py-4 font-medium text-white">{log.workflow_name}</td>
+                        <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{log.workflow_name}</td>
                         <td className="whitespace-nowrap px-6 py-4 font-mono">{log.customer_phone || '—'}</td>
                         <td className="px-6 py-4">{log.customer_name || '—'}</td>
                         <td className="whitespace-nowrap px-6 py-4">{getStatusBadge(log.status)}</td>
@@ -130,7 +130,7 @@ export function WebhookLogs() {
                             onClick={() => toggleExpandLog(log.id)}
                             variant="ghost"
                             size="sm"
-                            className="text-slate-400 hover:text-white px-2 py-1 text-[11px] h-7 flex items-center gap-1 ml-auto"
+                            className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white px-2 py-1 text-[11px] h-7 flex items-center gap-1 ml-auto"
                           >
                             {isExpanded ? (
                               <>
@@ -146,7 +146,7 @@ export function WebhookLogs() {
                       </tr>
                       {isExpanded && (
                         <tr>
-                          <td colSpan={6} className="bg-slate-950/40 px-6 py-4 border-t border-b border-slate-800/50">
+                          <td colSpan={6} className="bg-slate-50/50 dark:bg-slate-950/40 px-6 py-4 border-t border-b border-slate-200 dark:border-slate-800/50">
                             <div className="space-y-3">
                               {log.error_message && (
                                 <div className="rounded border border-red-500/10 bg-red-500/5 p-3">
@@ -155,8 +155,8 @@ export function WebhookLogs() {
                                 </div>
                               )}
                               <div>
-                                <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wide mb-1 font-mono">Payload Payload JSON</span>
-                                <pre className="max-h-60 overflow-y-auto rounded bg-slate-900/60 p-3 text-[10px] font-mono text-slate-300 border border-slate-800/50">
+                                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block uppercase tracking-wide mb-1 font-mono">Payload Payload JSON</span>
+                                <pre className="max-h-60 overflow-y-auto rounded bg-slate-100 dark:bg-slate-900/60 p-3 text-[10px] font-mono text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800/50">
                                   {JSON.stringify(log.payload, null, 2)}
                                 </pre>
                               </div>

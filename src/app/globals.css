@@ -241,4 +241,7 @@ html[data-theme="rose"] {
   html {
     @apply font-sans;
   }
+  button {
+    @apply cursor-pointer;
+  }
 }

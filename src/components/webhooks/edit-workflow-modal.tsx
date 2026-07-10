@@ -432,18 +432,18 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
   };
 
   return (
-    <div className="flex w-full flex-col rounded-xl border border-slate-800 bg-slate-900 shadow-xl overflow-hidden">
+    <div className="flex w-full flex-col rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
       {/* Form Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-slate-800 bg-slate-900 px-6 py-4">
+      <div className="flex shrink-0 items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-6 py-4">
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="rounded-md text-slate-400 hover:bg-slate-800 hover:text-white p-1.5 flex items-center justify-center transition-colors"
+            className="rounded-md text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white p-1.5 flex items-center justify-center transition-colors"
             title="Back to list"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <h3 className="text-base font-semibold text-white">
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white">
             {isEditing ? `Edit Workflow: ${workflow.name}` : 'Create New Workflow'}
           </h3>
         </div>
@@ -455,28 +455,28 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex-1 pr-4">
-                <label className="block text-xs font-semibold text-slate-400">Workflow Name *</label>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400">Workflow Name *</label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Lead Alert Notification"
-                  className="mt-1 bg-slate-950 text-white border-slate-800 focus:border-primary"
+                  className="mt-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800 focus:border-primary"
                 />
               </div>
 
               <div className="flex flex-col items-end pt-5">
-                <span className="text-xs text-slate-400 font-semibold mb-1">Is Active</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-1">Is Active</span>
                 <Switch checked={isActive} onCheckedChange={setIsActive} />
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-400">Recipient Name Mapping *</label>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400">Recipient Name Mapping *</label>
                 <select
                   value={recipientNameField}
                   onChange={(e) => setRecipientNameField(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955 px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-primary focus:outline-none"
                 >
                   <option value="">Select payload path...</option>
                   {availablePaths.map((path) => (
@@ -486,11 +486,11 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400">Recipient Phone Mapping *</label>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400">Recipient Phone Mapping *</label>
                 <select
                   value={recipientPhoneField}
                   onChange={(e) => setRecipientPhoneField(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955 px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-primary focus:outline-none"
                 >
                   <option value="">Select payload path...</option>
                   {availablePaths.map((path) => (
@@ -500,11 +500,11 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400">Recipient Email Mapping</label>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400">Recipient Email Mapping</label>
                 <select
                   value={recipientEmailField}
                   onChange={(e) => setRecipientEmailField(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955 px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-primary focus:outline-none"
                 >
                   <option value="">Select payload path (optional)...</option>
                   {availablePaths.map((path) => (
@@ -514,10 +514,10 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
               </div>
             </div>
 
-            <div className="flex items-center justify-between rounded-lg bg-slate-950/30 border border-slate-800/80 p-3.5 mt-2">
+            <div className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-955/30 border border-slate-200 dark:border-slate-800/80 p-3.5 mt-2">
               <div className="space-y-0.5">
-                <label className="text-xs font-semibold text-white">Save incoming webhooks as contacts</label>
-                <p className="text-[11px] text-slate-400">
+                <label className="text-xs font-semibold text-slate-900 dark:text-white">Save incoming webhooks as contacts</label>
+                <p className="text-[11px] text-slate-655 dark:text-slate-400">
                   If enabled, unrecognized phone numbers are saved to the database. Existing contacts are never duplicated.
                 </p>
               </div>
@@ -526,18 +526,18 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
           </div>
 
           {/* Conditions Section */}
-          <div className="border-t border-slate-800/80 pt-6 space-y-4">
+          <div className="border-t border-slate-200 dark:border-slate-800/80 pt-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-semibold text-white uppercase tracking-wider">Conditions</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">Determine if the payload triggers this workflow.</p>
+                <h4 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">Conditions</h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Determine if the payload triggers this workflow.</p>
               </div>
 
               <div className="flex items-center gap-3">
                 <select
                   value={matchType}
                   onChange={(e) => setMatchType(e.target.value as any)}
-                  className="rounded border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-white focus:outline-none"
+                  className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none"
                 >
                   <option value="all">Match All Conditions</option>
                   <option value="any">Match Any Condition</option>
@@ -547,7 +547,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                   onClick={addCondition}
                   variant="outline"
                   size="sm"
-                  className="border-slate-800 bg-slate-950 text-slate-300 hover:bg-slate-900 text-xs py-1 px-2.5 flex items-center gap-1"
+                  className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 text-xs py-1 px-2.5 flex items-center gap-1"
                 >
                   <Plus className="h-3.5 w-3.5" /> Add Condition
                 </Button>
@@ -557,11 +557,11 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
             {conditions.length > 0 ? (
               <div className="space-y-3">
                 {conditions.map((cond, idx) => (
-                  <div key={idx} className="flex items-center gap-2 rounded-lg bg-slate-950/40 border border-slate-800/60 p-3">
+                  <div key={idx} className="flex items-center gap-2 rounded-lg bg-slate-50 dark:bg-slate-955/40 border border-slate-200 dark:border-slate-800/60 p-3">
                     <select
                       value={cond.field}
                       onChange={(e) => updateCondition(idx, 'field', e.target.value)}
-                      className="flex-1 rounded border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                      className="flex-1 rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none"
                     >
                       <option value="">Select path...</option>
                       {availablePaths.map((path) => (
@@ -572,7 +572,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                     <select
                       value={cond.operator}
                       onChange={(e) => updateCondition(idx, 'operator', e.target.value as any)}
-                      className="w-36 rounded border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                      className="w-36 rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955 px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none"
                     >
                       <option value="equals">Equals</option>
                       <option value="not_equals">Does not equal</option>
@@ -587,7 +587,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                         value={cond.value}
                         onChange={(e) => updateCondition(idx, 'value', e.target.value)}
                         placeholder="Compare value"
-                        className="w-36 bg-slate-950 text-white border-slate-800 py-1 h-8 text-xs focus:border-primary"
+                        className="w-36 bg-white dark:bg-slate-950 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800 py-1 h-8 text-xs focus:border-primary"
                       />
                     )}
 
@@ -595,7 +595,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                       onClick={() => removeCondition(idx)}
                       variant="ghost"
                       size="icon"
-                      className="text-slate-400 hover:text-red-400 shrink-0 h-8 w-8"
+                      className="text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 shrink-0 h-8 w-8"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -603,26 +603,26 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-6 border border-dashed border-slate-800 rounded-lg bg-slate-950/10 text-center">
+              <div className="flex flex-col items-center justify-center py-6 border border-dashed border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-955/10 text-center">
                 <span className="text-xs text-slate-500 font-medium">No conditions configured. Trigger on any payload.</span>
               </div>
             )}
           </div>
 
           {/* Actions / Template Mapping */}
-          <div className="border-t border-slate-800/80 pt-6 space-y-4">
+          <div className="border-t border-slate-200 dark:border-slate-800/80 pt-6 space-y-4">
             <div>
-              <h4 className="text-xs font-semibold text-white uppercase tracking-wider">Action: Send Template</h4>
-              <p className="text-[11px] text-slate-400 mt-0.5">Choose which WhatsApp Template to send and map its variables.</p>
+              <h4 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">Action: Send Template</h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Choose which WhatsApp Template to send and map its variables.</p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">WhatsApp Template</label>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">WhatsApp Template</label>
                 <select
                   value={selectedTemplateId}
                   onChange={(e) => handleTemplateChange(e.target.value)}
-                  className="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                  className="w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-primary focus:outline-none"
                 >
                   <option value="">Select a template...</option>
                   {templates.map((t) => (
@@ -657,31 +657,31 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                 }
 
                 return (
-                  <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1.8fr] gap-6 border-t border-slate-800 pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1.8fr] gap-6 border-t border-slate-200 dark:border-slate-800 pt-6">
                     {/* Left Column: Live WhatsApp Preview */}
-                    <div className="flex flex-col rounded-xl border border-slate-800 bg-slate-950 p-5 shadow-inner select-none h-fit min-h-[380px]">
-                      <div className="flex items-center justify-between text-xs font-semibold text-slate-400 border-b border-slate-900 pb-2.5 mb-4">
+                    <div className="flex flex-col rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-950 p-5 shadow-inner select-none h-fit min-h-[380px]">
+                      <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-900 pb-2.5 mb-4">
                         <span>Live Preview</span>
-                        <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">Simulated WhatsApp</span>
+                        <span className="text-[10px] text-slate-450 dark:text-slate-500 uppercase tracking-wider font-mono">Simulated WhatsApp</span>
                       </div>
 
-                      <div className="flex flex-col border border-slate-900/60 rounded-xl bg-slate-950 p-4 min-h-[300px] relative overflow-hidden bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] justify-between">
+                      <div className="flex flex-col border border-slate-200 dark:border-slate-900/60 rounded-xl bg-white dark:bg-slate-950 p-4 min-h-[300px] relative overflow-hidden bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] justify-between">
                         {/* Chat Body */}
                         <div className="space-y-4 flex-1 flex flex-col justify-start">
                           {/* Chat bubble header context */}
-                          <div className="flex items-center gap-2 border-b border-slate-900/60 pb-2 mb-2 bg-slate-950/80 backdrop-blur-sm sticky top-0 z-10">
+                          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-900/60 pb-2 mb-2 bg-white/80 dark:bg-slate-955/80 backdrop-blur-sm sticky top-0 z-10">
                             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">JT</div>
                             <div className="min-w-0 flex-1">
-                              <div className="text-[11px] font-semibold text-white truncate">Journey Tank Bot</div>
+                              <div className="text-[11px] font-semibold text-slate-900 dark:text-white truncate">Journey Tank Bot</div>
                               <div className="text-[9px] text-slate-500">Business Account</div>
                             </div>
                           </div>
 
                           {/* Message Bubble */}
-                          <div className="max-w-[90%] self-start rounded-r-xl rounded-bl-xl bg-slate-900 border border-slate-850 text-white p-3 shadow-md space-y-2 relative">
+                          <div className="max-w-[90%] self-start rounded-r-xl rounded-bl-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-850 text-slate-900 dark:text-white p-3 shadow-md space-y-2 relative">
                             {/* Header Media Image Preview */}
                             {selectedTmpl.header_type === 'image' && (
-                              <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950/80 aspect-video flex items-center justify-center relative">
+                              <div className="rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-200/50 dark:bg-slate-950/80 aspect-video flex items-center justify-center relative">
                                 {previewImageUrl ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img
@@ -690,7 +690,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                     className="w-full h-full object-cover"
                                   />
                                 ) : (
-                                  <div className="flex flex-col items-center gap-1.5 text-slate-500 p-4">
+                                  <div className="flex flex-col items-center gap-1.5 text-slate-550 dark:text-slate-500 p-4">
                                     <Image className="h-5 w-5" />
                                     <span className="text-[10px]">No image mapped</span>
                                   </div>
@@ -700,25 +700,25 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
 
                             {/* Header Text Preview */}
                             {selectedTmpl.header_type === 'text' && selectedTmpl.header_content && (
-                              <div className="text-xs font-bold text-white tracking-wide border-b border-slate-800 pb-1">
+                              <div className="text-xs font-bold text-slate-900 dark:text-white tracking-wide border-b border-slate-200 dark:border-slate-800 pb-1">
                                 {getSubstitutedHeader(selectedTmpl.header_content, headerMapping)}
                               </div>
                             )}
 
                             {/* Body Text Preview */}
-                            <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
+                            <div className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
                               {getSubstitutedText(selectedTmpl.body_text, bodyMappings)}
                             </div>
 
                             {/* Footer text */}
                             {selectedTmpl.footer_text && (
-                              <div className="text-[10px] text-slate-400 font-medium pt-0.5">
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium pt-0.5">
                                 {selectedTmpl.footer_text}
                               </div>
                             )}
 
                             {/* Timestamp */}
-                            <div className="text-[9px] text-slate-500 text-right mt-1 font-mono">
+                            <div className="text-[9px] text-slate-450 dark:text-slate-500 text-right mt-1 font-mono">
                               {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </div>
                           </div>
@@ -740,7 +740,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                 return (
                                   <div
                                     key={idx}
-                                    className="rounded-lg bg-slate-900 border border-slate-850 px-4 py-2 text-center text-xs font-semibold text-primary/90 hover:bg-slate-850 cursor-pointer shadow-sm transition-colors"
+                                    className="rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-850 px-4 py-2 text-center text-xs font-semibold text-primary/90 hover:bg-slate-200/50 dark:hover:bg-slate-850 cursor-pointer shadow-sm transition-colors"
                                   >
                                     {btn.text}
                                     {payloadPreview && (
@@ -758,16 +758,16 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                     </div>
 
                     {/* Right Column: Tabbed Configurations */}
-                    <div className="rounded-lg bg-slate-950/60 border border-slate-800 p-4 space-y-4 h-fit">
+                    <div className="rounded-lg bg-slate-50 dark:bg-slate-955/60 border border-slate-200 dark:border-slate-800 p-4 space-y-4 h-fit">
                       {/* Tab Navigation */}
-                      <div className="flex border-b border-slate-800">
+                      <div className="flex border-b border-slate-200 dark:border-slate-800">
                         <button
                           type="button"
                           onClick={() => setActiveSubTab('map')}
                           className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${
                             activeSubTab === 'map'
                               ? 'border-primary text-primary'
-                              : 'border-transparent text-slate-400 hover:text-white'
+                              : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                           }`}
                         >
                           Map
@@ -778,10 +778,10 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                           onClick={() => setActiveSubTab('media')}
                           className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${
                             !hasMediaHeader
-                              ? 'opacity-40 cursor-not-allowed text-slate-600 border-transparent'
+                              ? 'opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-655 border-transparent'
                               : activeSubTab === 'media'
                               ? 'border-primary text-primary'
-                              : 'border-transparent text-slate-400 hover:text-white'
+                              : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                           }`}
                           title={!hasMediaHeader ? "Template does not have a media header" : "Configure template media"}
                         >
@@ -793,10 +793,10 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                           onClick={() => setActiveSubTab('advance')}
                           className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${
                             !hasButtons
-                              ? 'opacity-40 cursor-not-allowed text-slate-600 border-transparent'
+                              ? 'opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-655 border-transparent'
                               : activeSubTab === 'advance'
                               ? 'border-primary text-primary'
-                              : 'border-transparent text-slate-400 hover:text-white'
+                              : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                           }`}
                           title={!hasButtons ? "Template does not have buttons" : "Configure button payloads"}
                         >
@@ -809,8 +809,8 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                         <div className="space-y-4">
                           {/* Header parameters */}
                           {headerMapping && (
-                            <div className="space-y-2 border-t border-slate-900 pt-3">
-                              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                            <div className="space-y-2 border-t border-slate-200 dark:border-slate-900 pt-3">
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-550 dark:text-slate-400">
                                 <Info className="h-3.5 w-3.5" />
                                 <span>Header Text Parameter</span>
                               </div>
@@ -818,7 +818,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                 <select
                                   value={headerMapping.type}
                                   onChange={(e) => setHeaderMapping({ ...headerMapping, type: e.target.value })}
-                                  className="rounded border border-slate-800 bg-slate-900 px-2 py-1.5 text-xs text-white focus:outline-none w-36"
+                                  className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none w-36"
                                 >
                                   <option value="payload">Payload Field</option>
                                   <option value="static">Static Text</option>
@@ -827,7 +827,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                   <select
                                     value={headerMapping.value}
                                     onChange={(e) => setHeaderMapping({ ...headerMapping, value: e.target.value })}
-                                    className="flex-1 rounded border border-slate-800 bg-slate-900 px-2 py-1.5 text-xs text-white focus:outline-none"
+                                    className="flex-1 rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none"
                                   >
                                     <option value="">Select path...</option>
                                     {availablePaths.map((path) => (
@@ -841,7 +841,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                       value={headerMapping.value}
                                       onChange={(e) => setHeaderMapping({ ...headerMapping, value: e.target.value })}
                                       placeholder="Static text (use {{path}} for variables)"
-                                      className="flex-1 bg-slate-900 text-white border-slate-800 py-1 h-8 text-xs focus:border-primary"
+                                      className="flex-1 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800 py-1 h-8 text-xs focus:border-primary"
                                     />
                                     <select
                                       onChange={(e) => {
@@ -865,7 +865,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                           e.target.value = ''; // Reset select
                                         }
                                       }}
-                                      className="rounded border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] text-slate-300 hover:text-white cursor-pointer w-28 h-8"
+                                      className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1 text-[10px] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white cursor-pointer w-28 h-8 text-slate-900 dark:text-white"
                                     >
                                       <option value="">+ Variable</option>
                                       {availablePaths.map((path) => (
@@ -880,15 +880,15 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
 
                           {/* Body parameters */}
                           {bodyMappings.length > 0 && (
-                            <div className="space-y-3 border-t border-slate-900 pt-3">
-                              <span className="text-xs font-semibold text-slate-400 block">Body Parameters Variables</span>
+                            <div className="space-y-3 border-t border-slate-200 dark:border-slate-900 pt-3">
+                              <span className="text-xs font-semibold text-slate-550 dark:text-slate-400 block">Body Parameters Variables</span>
                               {bodyMappings.map((m) => (
                                 <div key={m.index} className="flex items-center gap-2">
                                   <span className="w-12 text-xs font-mono font-bold text-slate-500">{`{{${m.index}}}`}</span>
                                   <select
                                     value={m.type}
                                     onChange={(e) => updateBodyMapping(m.index, 'type', e.target.value)}
-                                    className="rounded border border-slate-800 bg-slate-900 px-2 py-1.5 text-xs text-white focus:outline-none w-36"
+                                    className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none w-36"
                                   >
                                     <option value="payload">Payload Field</option>
                                     <option value="static">Static Text</option>
@@ -897,7 +897,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                     <select
                                       value={m.value}
                                       onChange={(e) => updateBodyMapping(m.index, 'value', e.target.value)}
-                                      className="flex-1 rounded border border-slate-800 bg-slate-900 px-2 py-1.5 text-xs text-white focus:outline-none"
+                                      className="flex-1 rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none"
                                     >
                                       <option value="">Select path...</option>
                                       {availablePaths.map((path) => (
@@ -911,7 +911,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                         value={m.value}
                                         onChange={(e) => updateBodyMapping(m.index, 'value', e.target.value)}
                                         placeholder="Static text (use {{path}} for variables)"
-                                        className="flex-1 bg-slate-900 text-white border-slate-800 py-1 h-8 text-xs focus:border-primary"
+                                        className="flex-1 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800 py-1 h-8 text-xs focus:border-primary"
                                       />
                                       <select
                                         onChange={(e) => {
@@ -935,7 +935,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                             e.target.value = ''; // Reset select
                                           }
                                         }}
-                                        className="rounded border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] text-slate-300 hover:text-white cursor-pointer w-28 h-8"
+                                        className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1 text-[10px] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white cursor-pointer w-28 h-8 text-slate-900 dark:text-white"
                                       >
                                         <option value="">+ Variable</option>
                                         {availablePaths.map((path) => (
@@ -954,26 +954,26 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                       {/* Media Tab Content */}
                       {activeSubTab === 'media' && hasMediaHeader && (
                         <div className="space-y-4">
-                          <p className="text-xs text-slate-400 leading-relaxed">
+                          <p className="text-xs text-slate-655 dark:text-slate-400 leading-relaxed">
                             You can personalise this template with new media (images, videos, or PDFs) or we will use the existing ones you uploaded as sample by default.
                           </p>
 
                           <div className="space-y-1.5">
-                            <label className="block text-xs font-semibold text-slate-400">File name</label>
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400">File name</label>
                             <Input
                               value={mediaFileName}
                               onChange={(e) => setMediaFileName(e.target.value)}
                               placeholder="e.g. image.jpg"
-                              className="bg-slate-900 text-white border-slate-800 py-1 h-8 text-xs focus:border-primary"
+                              className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800 py-1 h-8 text-xs focus:border-primary"
                             />
                           </div>
 
                           <div className="space-y-1.5">
-                            <label className="block text-xs font-semibold text-slate-400">Media Source</label>
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400">Media Source</label>
                             <select
                               value={mediaSourceType}
                               onChange={(e) => setMediaSourceType(e.target.value as any)}
-                              className="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                              className="w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-primary focus:outline-none"
                             >
                               <option value="static">Paste a link (Static URL)</option>
                               <option value="payload">Pick variable (Payload Field)</option>
@@ -983,7 +983,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
 
                           {mediaSourceType === 'static' && (
                             <div className="space-y-1.5">
-                              <label className="block text-xs font-semibold text-slate-400">Paste a link</label>
+                              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400">Paste a link</label>
                               <Input
                                 value={mediaLink}
                                 onChange={(e) => setMediaLink(e.target.value)}
@@ -994,45 +994,45 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                     ? "https://example.com/document.pdf"
                                     : "https://example.com/image.jpg"
                                 }
-                                className="bg-slate-900 text-white border-slate-800 py-1 h-8 text-xs focus:border-primary"
+                                className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800 py-1 h-8 text-xs focus:border-primary"
                               />
                             </div>
                           )}
 
                           {mediaSourceType === 'payload' && (
                             <div className="space-y-1.5">
-                              <label className="block text-xs font-semibold text-slate-400">Pick variable</label>
+                              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400">Pick variable</label>
                               <select
                                 value={mediaPayloadPath}
                                 onChange={(e) => setMediaPayloadPath(e.target.value)}
-                                className="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                                className="w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-primary focus:outline-none"
                               >
                                 <option value="">Select payload path...</option>
-                                {availablePaths.map((path) => (
-                                  <option key={path} value={path}>{path}</option>
-                                ))}
+                                  {availablePaths.map((path) => (
+                                    <option key={path} value={path}>{path}</option>
+                                  ))}
                               </select>
                             </div>
                           )}
 
                           {mediaSourceType === 'upload' && (
                             <div className="space-y-2">
-                              <label className="block text-xs font-semibold text-slate-400">Upload</label>
+                              <label className="block text-xs font-semibold text-slate-550 dark:text-slate-400">Upload</label>
                               {mediaUploadUrl ? (
-                                <div className="flex items-center gap-2 rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-xs">
-                                  <Paperclip className="h-3.5 w-3.5 shrink-0 text-cyan-400" />
+                                <div className="flex items-center gap-2 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 px-3 py-2 text-xs">
+                                  <Paperclip className="h-3.5 w-3.5 shrink-0 text-cyan-550 dark:text-cyan-400" />
                                   <a
                                     href={mediaUploadUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="min-w-0 flex-1 truncate text-slate-200 hover:text-cyan-300"
+                                    className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-300 font-medium"
                                   >
                                     {mediaFileName || mediaUploadUrl}
                                   </a>
                                   <button
                                     type="button"
                                     onClick={() => { setMediaUploadUrl(''); setMediaFileName(''); }}
-                                    className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                                    className="rounded p-1 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
                                   >
                                     <X className="h-3.5 w-3.5" />
                                   </button>
@@ -1042,7 +1042,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                   type="button"
                                   disabled={mediaUploading}
                                   onClick={() => fileInputRef.current?.click()}
-                                  className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-slate-800 bg-slate-900 px-3 py-4 text-xs text-slate-400 transition-colors hover:border-slate-700 hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                                  className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-4 text-xs text-slate-500 dark:text-slate-400 transition-colors hover:border-slate-400 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                   {mediaUploading ? (
                                     <>
@@ -1090,25 +1090,25 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                       {activeSubTab === 'advance' && hasButtons && (
                         <div className="space-y-4">
                           <div>
-                            <span className="text-xs font-semibold text-slate-300 block mb-1">Button Payloads</span>
-                            <p className="text-[11px] text-slate-400 leading-relaxed">
+                            <span className="text-xs font-semibold text-slate-900 dark:text-slate-350 block mb-1">Button Payloads</span>
+                            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
                               In your WhatsApp Templates, if you've incorporated buttons, the payload serves as a trigger or intent for a flow, activating the flow upon selection.
                             </p>
                           </div>
 
                           <div className="space-y-3">
                             {selectedTmpl.buttons.map((btn: any, idx: number) => (
-                              <div key={idx} className="space-y-1.5 p-3 rounded-lg bg-slate-900/40 border border-slate-800/85">
-                                <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
+                              <div key={idx} className="space-y-1.5 p-3 rounded-lg bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/85">
+                                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
                                   <span>{`Button ${idx + 1}: "${btn.text}" (${btn.type})`}</span>
-                                  <span className="text-[10px] text-slate-500 uppercase">Optional</span>
+                                  <span className="text-[10px] text-slate-450 dark:text-slate-500 uppercase">Optional</span>
                                 </div>
 
                                 <div className="flex items-center gap-2">
                                   <select
                                     value={buttonMappings[idx]?.type || 'static'}
                                     onChange={(e) => updateButtonMapping(idx, 'type', e.target.value as any)}
-                                    className="rounded border border-slate-800 bg-slate-900 px-2 py-1.5 text-xs text-white focus:outline-none w-36"
+                                    className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none w-36"
                                   >
                                     <option value="static">Static Text</option>
                                     <option value="payload">Payload Field</option>
@@ -1117,7 +1117,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                     <select
                                       value={buttonMappings[idx]?.value || ''}
                                       onChange={(e) => updateButtonMapping(idx, 'value', e.target.value)}
-                                      className="flex-1 rounded border border-slate-800 bg-slate-905 px-2 py-1.5 text-xs text-white focus:outline-none"
+                                      className="flex-1 rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-905 px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none"
                                     >
                                       <option value="">Select path...</option>
                                       {availablePaths.map((path) => (
@@ -1131,7 +1131,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                         value={buttonMappings[idx]?.value || ''}
                                         onChange={(e) => updateButtonMapping(idx, 'value', e.target.value)}
                                         placeholder="Static payload value (use {{path}} for variables)"
-                                        className="flex-1 bg-slate-900 text-white border-slate-800 py-1 h-8 text-xs focus:border-primary"
+                                        className="flex-1 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800 py-1 h-8 text-xs focus:border-primary"
                                       />
                                       <select
                                         onChange={(e) => {
@@ -1155,7 +1155,7 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                                             e.target.value = ''; // Reset select
                                           }
                                         }}
-                                        className="rounded border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] text-slate-300 hover:text-white cursor-pointer w-28 h-8"
+                                        className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1 text-[10px] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white cursor-pointer w-28 h-8 text-slate-900 dark:text-white"
                                       >
                                         <option value="">+ Variable</option>
                                         {availablePaths.map((path) => (
@@ -1179,11 +1179,11 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
         </div>
 
         {/* Form Footer */}
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-800 bg-slate-900 px-6 py-4">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-6 py-4">
           <Button
             onClick={onClose}
             variant="outline"
-            className="border-slate-800 bg-slate-950 text-slate-300 hover:bg-slate-900"
+            className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900"
           >
             Cancel
           </Button>
