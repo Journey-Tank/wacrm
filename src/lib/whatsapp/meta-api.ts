@@ -447,6 +447,24 @@ export async function sendTemplateMessage(
   return { messageId: data.messages[0].id }
 }
 
+/**
+ * Fetch the App ID associated with the given access token by querying Meta's Graph API.
+ */
+export async function getMetaAppId(accessToken: string): Promise<string> {
+  const url = `${META_API_BASE}/app`
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!response.ok) {
+    await throwMetaError(response, `Failed to retrieve Meta App ID: ${response.status}`)
+  }
+  const data = (await response.json()) as { id?: string }
+  if (!data.id) {
+    throw new Error('Meta API returned no App ID.')
+  }
+  return data.id
+}
+
 // ============================================================
 // Resumable Upload (media handles for template headers)
 // ============================================================

@@ -12,6 +12,8 @@ import {
   Pencil,
   RotateCcw,
   Upload,
+  Eye,
+  Copy,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -132,6 +134,7 @@ export function TemplateManager() {
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [viewingOnly, setViewingOnly] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [form, setForm] = useState<TemplateFormData>(emptyForm);
@@ -235,6 +238,7 @@ export function TemplateManager() {
 
   function openEdit(template: MessageTemplate) {
     setEditingId(template.id);
+    setViewingOnly(false);
     setForm({
       name: template.name,
       category: template.category,
@@ -251,8 +255,51 @@ export function TemplateManager() {
     setDialogOpen(true);
   }
 
+  function openView(template: MessageTemplate) {
+    setEditingId(template.id);
+    setViewingOnly(true);
+    setForm({
+      name: template.name,
+      category: template.category,
+      language: template.language || 'en_US',
+      header_format: (template.header_type ?? 'none') as HeaderFormat,
+      header_content: template.header_content ?? '',
+      header_media_url: template.header_media_url ?? '',
+      header_sample: template.sample_values?.header?.[0] ?? '',
+      body_text: template.body_text,
+      body_samples: template.sample_values?.body ?? [],
+      footer_text: template.footer_text ?? '',
+      buttons: template.buttons ?? [],
+    });
+    setDialogOpen(true);
+  }
+
+  function openClone(template: MessageTemplate) {
+    setEditingId(null);
+    setViewingOnly(false);
+
+    let cloneName = template.name + '_copy';
+    cloneName = cloneName.toLowerCase().replace(/[^a-z0-9_]/g, '');
+
+    setForm({
+      name: cloneName,
+      category: template.category,
+      language: template.language || 'en_US',
+      header_format: (template.header_type ?? 'none') as HeaderFormat,
+      header_content: template.header_content ?? '',
+      header_media_url: template.header_media_url ?? '',
+      header_sample: template.sample_values?.header?.[0] ?? '',
+      body_text: template.body_text,
+      body_samples: template.sample_values?.body ?? [],
+      footer_text: template.footer_text ?? '',
+      buttons: template.buttons ?? [],
+    });
+    setDialogOpen(true);
+  }
+
   function openCreate() {
     setEditingId(null);
+    setViewingOnly(false);
     setForm(emptyForm);
     setDialogOpen(true);
   }
@@ -570,59 +617,83 @@ export function TemplateManager() {
                       </div>
                     )}
                   </div>
-                  {canManageTemplates && (
-                    <div className="flex items-center gap-1 shrink-0 ml-2">
-                      {statusKey === 'APPROVED' && (
+                  <div className="flex items-center gap-1 shrink-0 ml-2 flex-wrap justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openView(template)}
+                      title={t('viewTitle')}
+                      aria-label={t('viewLabel')}
+                      className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-8 px-2"
+                    >
+                      <Eye className="size-3.5" />
+                      {t('view')}
+                    </Button>
+                    {canManageTemplates && (
+                      <>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => openEdit(template)}
-                          title={t('editTitle')}
-                          aria-label={t('editLabel')}
+                          onClick={() => openClone(template)}
+                          title={t('cloneTitle')}
+                          aria-label={t('cloneLabel')}
                           className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-8 px-2"
                         >
-                          <Pencil className="size-3.5" />
-                          {t('edit')}
+                          <Copy className="size-3.5" />
+                          {t('clone')}
                         </Button>
-                      )}
-                      {(statusKey === 'REJECTED' || statusKey === 'PAUSED') && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEdit(template)}
-                          title={t('resubmitTitle')}
-                          aria-label={t('resubmitLabel')}
-                          className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-8 px-2"
-                        >
-                          <RotateCcw className="size-3.5" />
-                          {t('resubmit')}
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setTemplateToDelete(template)}
-                        disabled={deletingId === template.id}
-                        aria-label={
-                          template.meta_template_id
-                            ? t('deleteMetaLocallyAria')
-                            : t('deleteLocallyAria')
-                        }
-                        title={
-                          template.meta_template_id
-                            ? t('deleteMetaLocallyTitle')
-                            : t('deleteLocallyTitle')
-                        }
-                        className="text-muted-foreground hover:text-red-400 hover:bg-red-950/30 h-8 w-8"
-                      >
-                        {deletingId === template.id ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="size-4" />
+                        {statusKey === 'APPROVED' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEdit(template)}
+                            title={t('editTitle')}
+                            aria-label={t('editLabel')}
+                            className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-8 px-2"
+                          >
+                            <Pencil className="size-3.5" />
+                            {t('edit')}
+                          </Button>
                         )}
-                      </Button>
-                    </div>
-                  )}
+                        {(statusKey === 'REJECTED' || statusKey === 'PAUSED') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEdit(template)}
+                            title={t('resubmitTitle')}
+                            aria-label={t('resubmitLabel')}
+                            className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-8 px-2"
+                          >
+                            <RotateCcw className="size-3.5" />
+                            {t('resubmit')}
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setTemplateToDelete(template)}
+                          disabled={deletingId === template.id}
+                          aria-label={
+                            template.meta_template_id
+                              ? t('deleteMetaLocallyAria')
+                              : t('deleteLocallyAria')
+                          }
+                          title={
+                            template.meta_template_id
+                              ? t('deleteMetaLocallyTitle')
+                              : t('deleteLocallyTitle')
+                          }
+                          className="text-muted-foreground hover:text-red-400 hover:bg-red-950/30 h-8 w-8"
+                        >
+                          {deletingId === template.id ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-4" />
+                          )}
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -636,6 +707,7 @@ export function TemplateManager() {
           setDialogOpen(open);
           if (!open) {
             setEditingId(null);
+            setViewingOnly(false);
             setForm(emptyForm);
           }
         }}
@@ -643,12 +715,18 @@ export function TemplateManager() {
         <DialogContent className="bg-popover border-border sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-popover-foreground">
-              {editingId ? t('dialogEditTitle') : t('dialogNewTitle')}
+              {viewingOnly
+                ? t('dialogViewTitle')
+                : editingId
+                  ? t('dialogEditTitle')
+                  : t('dialogNewTitle')}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              {editingId
-                ? t('dialogEditDesc')
-                : t('dialogNewDesc')}
+              {viewingOnly
+                ? t('dialogViewDesc')
+                : editingId
+                  ? t('dialogEditDesc')
+                  : t('dialogNewDesc')}
             </DialogDescription>
           </DialogHeader>
 
@@ -666,7 +744,7 @@ export function TemplateManager() {
                 placeholder={t('namePlaceholder')}
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                disabled={editingId !== null}
+                disabled={editingId !== null || viewingOnly}
                 className="bg-muted border-border text-foreground placeholder:text-muted-foreground disabled:opacity-60 disabled:cursor-not-allowed"
               />
               <p className="text-[11px] text-muted-foreground">
@@ -681,6 +759,7 @@ export function TemplateManager() {
                 <Label className="text-muted-foreground">{t('category')}</Label>
                 <Select
                   value={form.category}
+                  disabled={viewingOnly}
                   onValueChange={(val) =>
                     setForm({
                       ...form,
@@ -688,7 +767,7 @@ export function TemplateManager() {
                     })
                   }
                 >
-                  <SelectTrigger className="w-full bg-muted border-border text-foreground">
+                  <SelectTrigger className="w-full bg-muted border-border text-foreground disabled:opacity-60 disabled:cursor-not-allowed">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-popover border-border">
@@ -714,7 +793,7 @@ export function TemplateManager() {
                   onChange={(e) =>
                     setForm({ ...form, language: e.target.value })
                   }
-                  disabled={editingId !== null}
+                  disabled={editingId !== null || viewingOnly}
                   className="bg-muted border-border text-foreground placeholder:text-muted-foreground disabled:opacity-60 disabled:cursor-not-allowed"
                 />
                 <datalist id="template-language-codes">
@@ -736,6 +815,7 @@ export function TemplateManager() {
               <Label className="text-muted-foreground">{t('header')}</Label>
               <Select
                 value={form.header_format}
+                disabled={viewingOnly}
                 onValueChange={(val) =>
                   // Preserve header_content, header_media_url, and
                   // header_sample across format switches. The submit
@@ -749,7 +829,7 @@ export function TemplateManager() {
                   })
                 }
               >
-                <SelectTrigger className="w-full bg-muted border-border text-foreground">
+                <SelectTrigger className="w-full bg-muted border-border text-foreground disabled:opacity-60 disabled:cursor-not-allowed">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
@@ -783,8 +863,9 @@ export function TemplateManager() {
                     onChange={(e) =>
                       setForm({ ...form, header_content: e.target.value })
                     }
+                    disabled={viewingOnly}
                     maxLength={TEMPLATE_LIMITS.headerTextMaxLength}
-                    className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                    className="bg-muted border-border text-foreground placeholder:text-muted-foreground disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                   {headerVarCount > 0 && (
                     <Input
@@ -795,7 +876,8 @@ export function TemplateManager() {
                       onChange={(e) =>
                         setForm({ ...form, header_sample: e.target.value })
                       }
-                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                      disabled={viewingOnly}
+                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground disabled:opacity-60 disabled:cursor-not-allowed"
                     />
                   )}
                 </div>
@@ -803,7 +885,7 @@ export function TemplateManager() {
 
               {headerNeedsMedia && (
                 <div className="space-y-2 mt-2">
-                  {form.header_format === 'image' && (
+                  {form.header_format === 'image' && !viewingOnly && (
                     <div className="flex items-center gap-2">
                       <input
                         ref={headerFileRef}
@@ -820,7 +902,7 @@ export function TemplateManager() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={uploadingHeader}
+                        disabled={uploadingHeader || viewingOnly}
                         onClick={() => headerFileRef.current?.click()}
                       >
                         {uploadingHeader ? (
@@ -841,7 +923,8 @@ export function TemplateManager() {
                     onChange={(e) =>
                       setForm({ ...form, header_media_url: e.target.value })
                     }
-                    className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                    disabled={viewingOnly}
+                    className="bg-muted border-border text-foreground placeholder:text-muted-foreground disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                   {form.header_format === 'image' && form.header_media_url && (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -872,14 +955,15 @@ export function TemplateManager() {
                 onChange={(e) =>
                   setForm({ ...form, body_text: e.target.value })
                 }
+                disabled={viewingOnly}
                 rows={4}
                 maxLength={TEMPLATE_LIMITS.bodyMaxLength}
-                className="bg-muted border-border text-foreground placeholder:text-muted-foreground resize-none"
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground resize-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
               <p className="text-[11px] text-muted-foreground">
                 {t('bodyHint')}
               </p>
-
+ 
               {bodyVarCount > 0 && (
                 <div className="space-y-1.5 pt-1">
                   <Label className="text-[11px] text-muted-foreground">
@@ -899,7 +983,8 @@ export function TemplateManager() {
                           next[i] = e.target.value;
                           setForm({ ...form, body_samples: next });
                         }}
-                        className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                        disabled={viewingOnly}
+                        className="bg-muted border-border text-foreground placeholder:text-muted-foreground disabled:opacity-60 disabled:cursor-not-allowed"
                       />
                     );
                   })}
@@ -915,25 +1000,28 @@ export function TemplateManager() {
                 onChange={(e) =>
                   setForm({ ...form, footer_text: e.target.value })
                 }
+                disabled={viewingOnly}
                 maxLength={TEMPLATE_LIMITS.footerMaxLength}
-                className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-muted-foreground">{t('buttons')}</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addButton}
-                  disabled={form.buttons.length >= TEMPLATE_LIMITS.maxButtonsTotal}
-                  className="border-border bg-transparent text-muted-foreground hover:bg-muted h-7 text-xs"
-                >
-                  <Plus className="size-3" />
-                  {t('addButton')}
-                </Button>
+                {!viewingOnly && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addButton}
+                    disabled={form.buttons.length >= TEMPLATE_LIMITS.maxButtonsTotal || viewingOnly}
+                    className="border-border bg-transparent text-muted-foreground hover:bg-muted h-7 text-xs"
+                  >
+                    <Plus className="size-3" />
+                    {t('addButton')}
+                  </Button>
+                )}
               </div>
               {form.buttons.length === 0 ? (
                 <p className="text-[11px] text-muted-foreground">
@@ -949,6 +1037,7 @@ export function TemplateManager() {
                       <div className="flex items-center gap-2">
                         <Select
                           value={btn.type}
+                          disabled={viewingOnly}
                           onValueChange={(val) => {
                             // Same null guard as the Header Select
                             // (per PR 148): @base-ui Select fires
@@ -957,7 +1046,7 @@ export function TemplateManager() {
                             changeButtonType(i, val as TemplateButton['type']);
                           }}
                         >
-                          <SelectTrigger className="w-40 bg-muted border-border text-foreground h-8 text-xs">
+                          <SelectTrigger className="w-40 bg-muted border-border text-foreground h-8 text-xs disabled:opacity-60 disabled:cursor-not-allowed">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="bg-popover border-border">
@@ -990,40 +1079,46 @@ export function TemplateManager() {
                         <Input
                           placeholder={t('btnLabelPlaceholder')}
                           value={btn.text}
+                          disabled={viewingOnly}
                           maxLength={TEMPLATE_LIMITS.buttonTextMaxLength}
                           onChange={(e) =>
                             updateButton(i, { text: e.target.value })
                           }
-                          className="flex-1 bg-muted border-border text-foreground placeholder:text-muted-foreground h-8 text-xs"
+                          className="flex-1 bg-muted border-border text-foreground placeholder:text-muted-foreground h-8 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
                         />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeButton(i)}
-                          className="text-muted-foreground hover:text-red-400 hover:bg-red-950/30 size-7"
-                        >
-                          <X className="size-3.5" />
-                        </Button>
+                        {!viewingOnly && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            disabled={viewingOnly}
+                            onClick={() => removeButton(i)}
+                            className="text-muted-foreground hover:text-red-400 hover:bg-red-950/30 size-7"
+                          >
+                            <X className="size-3.5" />
+                          </Button>
+                        )}
                       </div>
                       {btn.type === 'URL' && (
                         <div className="space-y-1 pl-1">
                           <Input
                             placeholder={t('urlPlaceholder')}
                             value={btn.url}
+                            disabled={viewingOnly}
                             onChange={(e) =>
                               updateButton(i, { url: e.target.value })
                             }
-                            className="bg-muted border-border text-foreground placeholder:text-muted-foreground h-8 text-xs"
+                            className="bg-muted border-border text-foreground placeholder:text-muted-foreground h-8 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
                           />
                           {extractVariableIndices(btn.url).length > 0 && (
                             <Input
                               placeholder={t('urlSamplePlaceholder')}
                               value={btn.example ?? ''}
+                              disabled={viewingOnly}
                               onChange={(e) =>
                                 updateButton(i, { example: e.target.value })
                               }
-                              className="bg-muted border-border text-foreground placeholder:text-muted-foreground h-8 text-xs"
+                              className="bg-muted border-border text-foreground placeholder:text-muted-foreground h-8 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
                             />
                           )}
                         </div>
@@ -1032,20 +1127,22 @@ export function TemplateManager() {
                         <Input
                           placeholder={t('phonePlaceholder')}
                           value={btn.phone_number}
+                          disabled={viewingOnly}
                           onChange={(e) =>
                             updateButton(i, { phone_number: e.target.value })
                           }
-                          className="bg-muted border-border text-foreground placeholder:text-muted-foreground h-8 text-xs"
+                          className="bg-muted border-border text-foreground placeholder:text-muted-foreground h-8 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
                         />
                       )}
                       {btn.type === 'COPY_CODE' && (
                         <Input
                           placeholder={t('codePlaceholder')}
                           value={btn.example}
+                          disabled={viewingOnly}
                           onChange={(e) =>
                             updateButton(i, { example: e.target.value })
                           }
-                          className="bg-muted border-border text-foreground placeholder:text-muted-foreground h-8 text-xs"
+                          className="bg-muted border-border text-foreground placeholder:text-muted-foreground h-8 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
                         />
                       )}
                     </div>
@@ -1056,29 +1153,40 @@ export function TemplateManager() {
           </div>
 
           <DialogFooter className="bg-popover border-border">
-            <Button
-              variant="outline"
-              onClick={() => setDialogOpen(false)}
-              className="border-border text-muted-foreground hover:bg-muted"
-            >
-              {t('cancel')}
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting || form.category === 'Authentication'}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  {editingId ? t('saving') : t('submitting')}
-                </>
-              ) : editingId ? (
-                t('saveResubmit')
-              ) : (
-                t('submitApproval')
-              )}
-            </Button>
+            {viewingOnly ? (
+              <Button
+                onClick={() => setDialogOpen(false)}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                {t('close')}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                  className="border-border text-muted-foreground hover:bg-muted"
+                >
+                  {t('cancel')}
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={submitting || form.category === 'Authentication'}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      {editingId ? t('saving') : t('submitting')}
+                    </>
+                  ) : editingId ? (
+                    t('saveResubmit')
+                  ) : (
+                    t('submitApproval')
+                  )}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

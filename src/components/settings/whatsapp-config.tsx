@@ -407,14 +407,14 @@ export function WhatsAppConfig() {
 
         {/* Corrupted-token reset banner */}
         {showResetBanner && (
-          <Alert className="bg-amber-950/40 border-amber-600/40">
+          <Alert className="bg-amber-500/10 dark:bg-amber-950/40 border-amber-500/20 dark:border-amber-600/40">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="size-5 text-amber-400 mt-0.5 shrink-0" />
+              <AlertTriangle className="size-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
               <div className="flex-1">
-                <AlertTitle className="text-amber-200 mb-1">
+                <AlertTitle className="text-amber-800 dark:text-amber-200 mb-1">
                   Stored token can&apos;t be decrypted
                 </AlertTitle>
-                <AlertDescription className="text-amber-100/80 text-sm">
+                <AlertDescription className="text-amber-700/80 dark:text-amber-100/80 text-sm">
                   {statusMessage}
                 </AlertDescription>
                 <Button
@@ -469,20 +469,20 @@ export function WhatsAppConfig() {
           <Alert
             className={
               isRegistered
-                ? 'bg-emerald-950/30 border-emerald-700/50'
-                : 'bg-amber-950/30 border-amber-700/50'
+                ? 'bg-emerald-500/10 dark:bg-emerald-950/30 border-emerald-500/20 dark:border-emerald-700/50'
+                : 'bg-amber-500/10 dark:bg-amber-950/30 border-amber-500/20 dark:border-amber-700/50'
             }
           >
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
                 {isRegistered ? (
-                  <CheckCircle2 className="size-4 text-emerald-400" />
+                  <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
                 ) : (
-                  <AlertTriangle className="size-4 text-amber-400" />
+                  <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400" />
                 )}
                 <AlertTitle
                   className={
-                    'mb-0 ' + (isRegistered ? 'text-emerald-200' : 'text-amber-200')
+                    'mb-0 ' + (isRegistered ? 'text-emerald-800 dark:text-emerald-200' : 'text-amber-800 dark:text-amber-200')
                   }
                 >
                   {isRegistered
