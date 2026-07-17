@@ -167,6 +167,10 @@ export const RATE_LIMITS = {
    *  capping a stampede; excess inbounds simply don't get an auto-reply
    *  (they still land in the inbox for a human). */
   aiAutoReplyAccount: { limit: 30, windowMs: 60_000 },
+  /** Generic webhook incoming execution, keyed per workflow ID.
+   *  60/min (1/s) bounds a runaway trigger source from driving
+   *  excessive sends, while leaving enough room for natural webhook bursts. */
+  incomingWebhook: { limit: 60, windowMs: 60_000 },
 } as const;
 
 /** Test-only helper. Clears the in-memory state so unit tests don't

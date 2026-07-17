@@ -69,6 +69,7 @@ export function WhatsAppConfig() {
   const [verifyToken, setVerifyToken] = useState('');
   const [pin, setPin] = useState('');
   const [tokenEdited, setTokenEdited] = useState(false);
+  const [useMarketingEndpoint, setUseMarketingEndpoint] = useState(false);
 
   // True once /register has succeeded on Meta's side (timestamp set
   // in the row). When false, the saved config is metadata-only and
@@ -121,6 +122,7 @@ export function WhatsAppConfig() {
         setVerifyToken('');
         setPin('');
         setTokenEdited(false);
+        setUseMarketingEndpoint(data.use_marketing_endpoint || false);
       } else {
         setConfig(null);
         setPhoneNumberId('');
@@ -129,6 +131,7 @@ export function WhatsAppConfig() {
         setVerifyToken('');
         setPin('');
         setTokenEdited(false);
+        setUseMarketingEndpoint(false);
       }
       // Clear any stale probe result when reloading the row.
       setRegistrationProbe(null);
@@ -207,6 +210,7 @@ export function WhatsAppConfig() {
         // requires it on first save or when changing numbers; for a
         // simple token rotation, leaving it blank skips re-register.
         pin: pin.trim() || null,
+        use_marketing_endpoint: useMarketingEndpoint,
       };
 
       if (tokenEdited && accessToken !== MASKED_TOKEN && accessToken.trim()) {
@@ -649,6 +653,25 @@ export function WhatsAppConfig() {
               <p className="text-xs text-muted-foreground leading-relaxed">
                 <span dangerouslySetInnerHTML={{ __html: t('pinHint') }} />
               </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-4 border-t border-border/50">
+              <input
+                id="useMarketingEndpoint"
+                type="checkbox"
+                disabled={saving}
+                checked={useMarketingEndpoint}
+                onChange={(e) => setUseMarketingEndpoint(e.target.checked)}
+                className="size-4 rounded border-border bg-muted text-primary focus:ring-primary cursor-pointer disabled:opacity-50"
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="useMarketingEndpoint" className="text-foreground font-medium cursor-pointer text-sm">
+                  Use Marketing Messages Lite API
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Enable this if your account is enrolled in Meta&apos;s Marketing Messages Lite API (routes category Marketing templates to <code className="bg-muted px-1 py-0.5 rounded text-[10px]">/marketing_messages</code> instead of <code className="bg-muted px-1 py-0.5 rounded text-[10px]">/messages</code>).
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -341,6 +341,7 @@ export async function sendMessageToConversation(
         messageParams: templateMessageParams ?? undefined,
         params: templateParams || [],
         contextMessageId,
+        useMarketingEndpoint: config.use_marketing_endpoint,
       });
       return result.messageId;
     }
@@ -455,7 +456,7 @@ export async function sendMessageToConversation(
       sender_type: 'agent',
       content_type: messageType,
       content_text: interactiveBody ?? contentText ?? null,
-      media_url: mediaUrl || null,
+      media_url: mediaUrl || ((templateMessageParams as Record<string, unknown>)?.headerMediaUrl as string | undefined) || null,
       template_name: templateName || null,
       interactive_payload:
         messageType === 'interactive' ? interactivePayload : null,
