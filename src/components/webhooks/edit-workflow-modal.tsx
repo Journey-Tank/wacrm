@@ -697,9 +697,9 @@ export function EditWorkflowModal({ workflow, lastPayload, onClose, onSave }: Ed
                         <div className="space-y-4 flex-1 flex flex-col justify-start">
                           {/* Chat bubble header context */}
                           <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-900/60 pb-2 mb-2 bg-white/80 dark:bg-slate-955/80 backdrop-blur-sm sticky top-0 z-10">
-                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">JT</div>
+                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">WA</div>
                             <div className="min-w-0 flex-1">
-                              <div className="text-[11px] font-semibold text-slate-900 dark:text-white truncate">Journey Tank Bot</div>
+                              <div className="text-[11px] font-semibold text-slate-900 dark:text-white truncate">WhatsApp Bot</div>
                               <div className="text-[9px] text-slate-500">Business Account</div>
                             </div>
                           </div>
