@@ -130,7 +130,7 @@ export async function POST(request: Request) {
     const { supabase, accountId, userId } = await requireRole('admin')
 
     const body = await request.json()
-    const { phone_number_id, waba_id, access_token, verify_token, pin } = body
+    const { phone_number_id, waba_id, access_token, verify_token, pin, use_marketing_endpoint } = body
 
     if (!access_token || !phone_number_id) {
       return NextResponse.json(
@@ -308,6 +308,7 @@ export async function POST(request: Request) {
       registered_at: registrationError ? null : registeredAt,
       subscribed_apps_at: subscribedAppsAt ?? null,
       last_registration_error: registrationError,
+      use_marketing_endpoint: use_marketing_endpoint ?? false,
       updated_at: new Date().toISOString(),
     }
 
