@@ -379,9 +379,16 @@ async function handleStatusUpdate(status: {
   //    `.select()`: message_id is NOT unique (migration 009 — Meta ids
   //    repeat across numbers), so this updates 0..N rows and must not
   //    assume a single row.
+  //    We must map not_in_whatsapp and frequency_limit back to failed 
+  //    since the messages table constraint does not support them.
+  const messageTableStatus = 
+    (mappedStatus === 'not_in_whatsapp' || mappedStatus === 'frequency_limit' || mappedStatus === 'unsubscribed') 
+      ? 'failed' 
+      : mappedStatus;
+
   const { error: msgErr } = await supabaseAdmin()
     .from('messages')
-    .update({ status: mappedStatus })
+    .update({ status: messageTableStatus })
     .eq('message_id', status.id)
 
   if (msgErr) {
