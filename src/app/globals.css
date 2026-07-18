@@ -128,6 +128,17 @@ html[data-mode="dark"] {
   --sidebar-accent: oklch(0.22 0.01 260);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.28 0.01 260);
+
+  /* ─── Broadcast analytics semantic colors (dark) ─── */
+  --bc-sent:          oklch(0.60 0.20 254);  /* blue-500   */
+  --bc-delivered:     oklch(0.60 0.14 175);  /* teal-500   */
+  --bc-read:          oklch(0.58 0.20 280);  /* indigo-500 */
+  --bc-replied:       oklch(0.57 0.22 292);  /* violet-500 */
+  --bc-failed:        oklch(0.63 0.24  25);  /* red-500    */
+  --bc-pending:       oklch(0.55 0.01 260);  /* slate-400  */
+  --bc-not-in-wa:     oklch(0.68 0.20  50);  /* orange-400 */
+  --bc-freq-limit:    oklch(0.76 0.18  85);  /* amber-400  */
+  --bc-unsubscribed:  oklch(0.64 0.24 340);  /* pink-400   */
 }
 
 html[data-mode="light"] {
@@ -157,6 +168,17 @@ html[data-mode="light"] {
   --sidebar-accent: oklch(0.96 0.004 260);
   --sidebar-accent-foreground: oklch(0.25 0.01 260);
   --sidebar-border: oklch(0.922 0.004 260);
+
+  /* ─── Broadcast analytics semantic colors (light) ─── */
+  --bc-sent:          oklch(0.52 0.22 254);  /* blue-600   */
+  --bc-delivered:     oklch(0.50 0.15 175);  /* teal-600   */
+  --bc-read:          oklch(0.50 0.22 280);  /* indigo-600 */
+  --bc-replied:       oklch(0.49 0.24 292);  /* violet-600 */
+  --bc-failed:        oklch(0.55 0.26  25);  /* red-600    */
+  --bc-pending:       oklch(0.50 0.01 260);  /* slate-500  */
+  --bc-not-in-wa:     oklch(0.60 0.22  50);  /* orange-600 */
+  --bc-freq-limit:    oklch(0.65 0.18  85);  /* amber-600  */
+  --bc-unsubscribed:  oklch(0.56 0.26 340);  /* pink-600   */
 }
 
 /* ---- ACCENT: primary color ---- */

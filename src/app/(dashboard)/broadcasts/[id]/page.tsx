@@ -89,6 +89,42 @@ function buildTimeline(total: number, sent: number, createdAt: string) {
   return result;
 }
 
+/** Read broadcast semantic colors from the active CSS theme at runtime.
+ *  getComputedStyle resolves oklch → a real color string the browser can paint,
+ *  so we can safely pass it to Recharts SVG props. */
+function useBroadcastColors() {
+  const defaults = {
+    sent:         'oklch(0.60 0.20 254)',
+    delivered:    'oklch(0.60 0.14 175)',
+    read:         'oklch(0.58 0.20 280)',
+    replied:      'oklch(0.57 0.22 292)',
+    failed:       'oklch(0.63 0.24 25)',
+    pending:      'oklch(0.55 0.01 260)',
+    notInWa:      'oklch(0.68 0.20 50)',
+    freqLimit:    'oklch(0.76 0.18 85)',
+    unsubscribed: 'oklch(0.64 0.24 340)',
+  };
+  const [colors, setColors] = React.useState(defaults);
+  React.useEffect(() => {
+    const el = document.documentElement;
+    const g = (v: string) => getComputedStyle(el).getPropertyValue(v).trim() || defaults[v as keyof typeof defaults];
+    setColors({
+      sent:         g('--bc-sent'),
+      delivered:    g('--bc-delivered'),
+      read:         g('--bc-read'),
+      replied:      g('--bc-replied'),
+      failed:       g('--bc-failed'),
+      pending:      g('--bc-pending'),
+      notInWa:      g('--bc-not-in-wa'),
+      freqLimit:    g('--bc-freq-limit'),
+      unsubscribed: g('--bc-unsubscribed'),
+    });
+  // re-resolve whenever the user switches theme/mode
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return colors;
+}
+
 function AnalyticsDashboard({
   metrics,
   broadcastStatus,
@@ -98,6 +134,8 @@ function AnalyticsDashboard({
   broadcastStatus: string;
   createdAt: string;
 }) {
+  const C = useBroadcastColors();
+
   const [tick, setTick] = React.useState(0);
   React.useEffect(() => {
     if (broadcastStatus !== 'sending') return;
@@ -119,63 +157,62 @@ function AnalyticsDashboard({
   const pctOf = (n: number, base: number) =>
     base > 0 ? parseFloat(((n / base) * 100).toFixed(1)) : 0;
 
-  const deliveryRate = pctOf(delivered, sent);
-  const readRate = pctOf(read, delivered);
-  const replyRate = pctOf(replied, delivered);
-  const failedRate = pctOf(failed, sent);
+  const deliveryRate  = pctOf(delivered, sent);
+  const readRate      = pctOf(read, delivered);
+  const replyRate     = pctOf(replied, delivered);
+  const failedRate    = pctOf(failed, sent);
   const processedRate = pctOf(sent + failed + (metrics.not_in_whatsapp || 0) + (metrics.frequency_limit || 0), total);
 
-  // Funnel drop-off percentages (prev → curr stage)
-  const dropToSent = pctOf(sent, total);
+  const dropToSent      = pctOf(sent, total);
   const dropToDelivered = pctOf(delivered, sent);
-  const dropToRead = pctOf(read, delivered);
-  const dropToReplied = pctOf(replied, read);
+  const dropToRead      = pctOf(read, delivered);
+  const dropToReplied   = pctOf(replied, read);
 
   const timelineData = React.useMemo(
     () => buildTimeline(total, sent, createdAt),
     [total, sent, createdAt],
   );
 
-  // Insights
   const insights = [
     deliveryRate >= 90
-      ? { ok: true, text: `Delivery performing well (${deliveryRate}%)` }
+      ? { ok: true,  text: `Delivery performing well (${deliveryRate}%)` }
       : { ok: false, text: `Delivery below target — check Not in WhatsApp count` },
     readRate >= 60
-      ? { ok: true, text: `Strong read rate — ${readRate}% of delivered` }
+      ? { ok: true,  text: `Strong read rate — ${readRate}% of delivered` }
       : { ok: false, text: `Read rate lower than average (${readRate}%)` },
     failed <= 5
-      ? { ok: true, text: `Only ${failed} failure${failed !== 1 ? 's' : ''} detected` }
+      ? { ok: true,  text: `Only ${failed} failure${failed !== 1 ? 's' : ''} detected` }
       : { ok: false, text: `${failed} failures — review error logs` },
-    { ok: true, text: `Peak delivery speed: ${Math.max(...timelineData.map((d) => d.msgs))} msg/min` },
+    { ok: true,  text: `Peak delivery speed: ${Math.max(...timelineData.map((d) => d.msgs))} msg/min` },
     replyRate > 5
-      ? { ok: true, text: `Engagement is strong — ${replyRate}% reply rate` }
+      ? { ok: true,  text: `Engagement is strong — ${replyRate}% reply rate` }
       : { ok: false, text: `Low engagement — only ${replyRate}% replied` },
   ];
 
   const kpiCards = [
-    { label: 'Delivery Rate', value: `${deliveryRate}%`, sub: `${delivered.toLocaleString()} delivered`, color: '#14b8a6', positive: deliveryRate > 80 },
-    { label: 'Read Rate',     value: `${readRate}%`,     sub: `${read.toLocaleString()} read`,       color: '#6366f1', positive: readRate > 50 },
-    { label: 'Reply Rate',    value: `${replyRate}%`,    sub: `${replied.toLocaleString()} replied`,   color: '#8b5cf6', positive: replyRate > 5 },
-    { label: 'Failed',        value: `${failedRate}%`,   sub: `${failed.toLocaleString()} messages`,   color: '#ef4444', positive: failedRate < 5 },
-    { label: 'Remaining',     value: pending.toLocaleString(), sub: isLive ? 'Processing…' : 'Not sent', color: '#94a3b8', positive: null },
+    { label: 'Delivery Rate', value: `${deliveryRate}%`, sub: `${delivered.toLocaleString()} delivered`, color: C.delivered, positive: deliveryRate > 80 },
+    { label: 'Read Rate',     value: `${readRate}%`,     sub: `${read.toLocaleString()} read`,           color: C.read,      positive: readRate > 50 },
+    { label: 'Reply Rate',    value: `${replyRate}%`,    sub: `${replied.toLocaleString()} replied`,     color: C.replied,   positive: replyRate > 5 },
+    { label: 'Failed',        value: `${failedRate}%`,   sub: `${failed.toLocaleString()} messages`,     color: C.failed,    positive: failedRate < 5 },
+    { label: 'Remaining',     value: pending.toLocaleString(), sub: isLive ? 'Processing…' : 'Not sent', color: C.pending,   positive: null },
   ];
 
   const barStages = [
-    { label: 'Delivered', value: delivered, max: sent,     color: '#14b8a6' },
-    { label: 'Read',      value: read,      max: delivered, color: '#6366f1' },
-    { label: 'Replied',   value: replied,   max: read,      color: '#8b5cf6' },
-    { label: 'Failed',    value: failed,    max: sent,      color: '#ef4444' },
-    { label: 'Pending',   value: pending,   max: total,     color: '#94a3b8' },
+    { label: 'Delivered', value: delivered, max: sent,      color: C.delivered },
+    { label: 'Read',      value: read,      max: delivered,  color: C.read },
+    { label: 'Replied',   value: replied,   max: read,       color: C.replied },
+    { label: 'Failed',    value: failed,    max: sent,       color: C.failed },
+    { label: 'Pending',   value: pending,   max: total,      color: C.pending },
   ];
 
   const funnelStages = [
-    { label: 'Audience', value: total,     pct: 100,           dropPct: null,          color: '#3b82f6' },
-    { label: 'Sent',     value: sent,      pct: pctOf(sent, total),  dropPct: dropToSent,   color: '#14b8a6' },
-    { label: 'Delivered',value: delivered, pct: pctOf(delivered, total), dropPct: dropToDelivered, color: '#6366f1' },
-    { label: 'Read',     value: read,      pct: pctOf(read, total),  dropPct: dropToRead,   color: '#8b5cf6' },
-    { label: 'Replied',  value: replied,   pct: pctOf(replied, total), dropPct: dropToReplied, color: '#f59e0b' },
+    { label: 'Audience',  value: total,     pct: 100,                     dropPct: null,            color: C.sent },
+    { label: 'Sent',      value: sent,      pct: pctOf(sent, total),      dropPct: dropToSent,      color: C.delivered },
+    { label: 'Delivered', value: delivered, pct: pctOf(delivered, total), dropPct: dropToDelivered, color: C.read },
+    { label: 'Read',      value: read,      pct: pctOf(read, total),      dropPct: dropToRead,      color: C.replied },
+    { label: 'Replied',   value: replied,   pct: pctOf(replied, total),   dropPct: dropToReplied,   color: C.freqLimit },
   ];
+
 
   return (
     <div className="space-y-4">
@@ -283,7 +320,7 @@ function AnalyticsDashboard({
               <p className="text-xs text-muted-foreground mt-0.5">Messages sent per minute</p>
             </div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
+              <span className="inline-block h-2 w-2 rounded-full" style={{ background: C.sent }} />
               Messages / min
             </div>
           </div>
@@ -292,21 +329,21 @@ function AnalyticsDashboard({
               <AreaChart data={timelineData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="timelineGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
+                    <stop offset="5%"  stopColor={C.sent} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={C.sent} stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                 <XAxis
                   dataKey="min"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 11, fill: '#94a3b8' }}
+                  tick={{ fontSize: 11, fill: C.pending }}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 11, fill: '#94a3b8' }}
+                  tick={{ fontSize: 11, fill: C.pending }}
                   tickFormatter={(v) => v.toLocaleString()}
                 />
                 <Tooltip
@@ -324,11 +361,11 @@ function AnalyticsDashboard({
                 <Area
                   type="monotone"
                   dataKey="msgs"
-                  stroke="#3b82f6"
+                  stroke={C.sent}
                   strokeWidth={2.5}
                   fill="url(#timelineGrad)"
                   dot={false}
-                  activeDot={{ r: 5, fill: '#3b82f6', strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: C.sent, strokeWidth: 0 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
