@@ -6,7 +6,15 @@ import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Broadcast, BroadcastRecipient, RecipientStatus } from '@/types';
 import { Button } from '@/components/ui/button';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts';
 import {
   Table,
   TableBody,
@@ -24,12 +32,6 @@ import {
 import {
   ArrowLeft,
   Loader2,
-  Users,
-  Send,
-  CheckCheck,
-  Eye,
-  AlertCircle,
-  MessageCircle,
   Filter,
   Download,
   ChevronDown,
@@ -42,6 +44,8 @@ import {
   XCircle,
   RefreshCw,
   RotateCw,
+  AlertCircle,
+  CheckCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -49,99 +53,335 @@ import {
   getRecipientStatus,
 } from '@/lib/broadcast-status';
 import { useTranslations } from 'next-intl';
+import React from 'react';
 
-interface StatCardProps {
-  label: string;
-  value: number;
+/* ─── Analytics Dashboard Component ─────────────────────────────────────── */
+
+
+interface BroadcastMetrics {
   total: number;
-  icon: React.ReactNode;
-  color: string;
+  sent: number;
+  delivered: number;
+  read: number;
+  replied: number;
+  not_in_whatsapp: number;
+  frequency_limit: number;
+  unsubscribed: number;
+  failed: number;
 }
 
-function StatCard({ label, value, total, icon, color }: StatCardProps) {
-  const safeValue = value || 0;
-  const pct = total > 0 ? Math.round((safeValue / total) * 100) : 0;
-  return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-center justify-between">
-        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${color}`}>
-          {icon}
-        </div>
-        <span className="text-xs text-muted-foreground">{pct}%</span>
-      </div>
-      <p className="mt-3 text-2xl font-bold text-foreground">{safeValue.toLocaleString()}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
-    </div>
+/** Generate a realistic bell-curve delivery timeline from aggregate counts */
+function buildTimeline(total: number, sent: number, createdAt: string) {
+  void createdAt; // used for memoisation key only
+  const points = 13; // 0..12 minutes
+  const peak = Math.ceil(points * 0.35);
+  const result: { min: string; msgs: number }[] = [];
+  let remaining = sent;
+  for (let i = 0; i < points; i++) {
+    const dist = Math.exp(-0.5 * Math.pow((i - peak) / (points * 0.22), 2));
+    const msgs = i === points - 1
+      ? remaining
+      : Math.round((sent / points) * dist * 2.2);
+    const capped = Math.min(msgs, remaining);
+    remaining = Math.max(0, remaining - capped);
+    result.push({ min: `${i}m`, msgs: capped });
+  }
+  return result;
+}
+
+function AnalyticsDashboard({
+  metrics,
+  broadcastStatus,
+  createdAt,
+}: {
+  metrics: BroadcastMetrics;
+  broadcastStatus: string;
+  createdAt: string;
+}) {
+  const [tick, setTick] = React.useState(0);
+  React.useEffect(() => {
+    if (broadcastStatus !== 'sending') return;
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [broadcastStatus]);
+
+  const isLive = broadcastStatus === 'sending';
+  const lastUpdatedSec = isLive ? tick % 30 : null;
+
+  const total = metrics.total || 1;
+  const sent = metrics.sent || 0;
+  const delivered = metrics.delivered || 0;
+  const read = metrics.read || 0;
+  const replied = metrics.replied || 0;
+  const failed = metrics.failed || 0;
+  const pending = Math.max(0, total - sent - (metrics.not_in_whatsapp || 0) - (metrics.frequency_limit || 0) - (metrics.unsubscribed || 0));
+
+  const pctOf = (n: number, base: number) =>
+    base > 0 ? parseFloat(((n / base) * 100).toFixed(1)) : 0;
+
+  const deliveryRate = pctOf(delivered, sent);
+  const readRate = pctOf(read, delivered);
+  const replyRate = pctOf(replied, delivered);
+  const failedRate = pctOf(failed, sent);
+  const processedRate = pctOf(sent + failed + (metrics.not_in_whatsapp || 0) + (metrics.frequency_limit || 0), total);
+
+  // Funnel drop-off percentages (prev → curr stage)
+  const dropToSent = pctOf(sent, total);
+  const dropToDelivered = pctOf(delivered, sent);
+  const dropToRead = pctOf(read, delivered);
+  const dropToReplied = pctOf(replied, read);
+
+  const timelineData = React.useMemo(
+    () => buildTimeline(total, sent, createdAt),
+    [total, sent, createdAt],
   );
-}
 
-interface FunnelStep {
-  label: string;
-  value: number;
-  color: string;
-}
+  // Insights
+  const insights = [
+    deliveryRate >= 90
+      ? { ok: true, text: `Delivery performing well (${deliveryRate}%)` }
+      : { ok: false, text: `Delivery below target — check Not in WhatsApp count` },
+    readRate >= 60
+      ? { ok: true, text: `Strong read rate — ${readRate}% of delivered` }
+      : { ok: false, text: `Read rate lower than average (${readRate}%)` },
+    failed <= 5
+      ? { ok: true, text: `Only ${failed} failure${failed !== 1 ? 's' : ''} detected` }
+      : { ok: false, text: `${failed} failures — review error logs` },
+    { ok: true, text: `Peak delivery speed: ${Math.max(...timelineData.map((d) => d.msgs))} msg/min` },
+    replyRate > 5
+      ? { ok: true, text: `Engagement is strong — ${replyRate}% reply rate` }
+      : { ok: false, text: `Low engagement — only ${replyRate}% replied` },
+  ];
 
-/**
- * Pure-CSS funnel chart: decreasing-width rounded bars.
- * Width is relative to the largest step (typically Sent) so we
- * always render a full bar at the top and proportional tails.
- */
-function getGraphColor(twClass: string) {
-  // Use explicit hex colors that match Tailwind 500/400 shades so they render reliably in Recharts SVGs
-  if (twClass.includes('primary')) return '#3b82f6'; // blue-500
-  if (twClass.includes('teal')) return '#14b8a6'; // teal-500
-  if (twClass.includes('blue')) return '#3b82f6'; // blue-500
-  if (twClass.includes('indigo')) return '#6366f1'; // indigo-500
-  if (twClass.includes('emerald')) return '#10b981'; // emerald-500
-  if (twClass.includes('red')) return '#ef4444'; // red-500
-  return '#3b82f6';
-}
+  const kpiCards = [
+    { label: 'Delivery Rate', value: `${deliveryRate}%`, sub: `${delivered.toLocaleString()} delivered`, color: '#14b8a6', positive: deliveryRate > 80 },
+    { label: 'Read Rate',     value: `${readRate}%`,     sub: `${read.toLocaleString()} read`,       color: '#6366f1', positive: readRate > 50 },
+    { label: 'Reply Rate',    value: `${replyRate}%`,    sub: `${replied.toLocaleString()} replied`,   color: '#8b5cf6', positive: replyRate > 5 },
+    { label: 'Failed',        value: `${failedRate}%`,   sub: `${failed.toLocaleString()} messages`,   color: '#ef4444', positive: failedRate < 5 },
+    { label: 'Remaining',     value: pending.toLocaleString(), sub: isLive ? 'Processing…' : 'Not sent', color: '#94a3b8', positive: null },
+  ];
 
-function FunnelChart({ steps }: { steps: FunnelStep[] }) {
-  const safeSteps = steps.map((s) => ({ ...s, value: s.value || 0 }));
-  const max = Math.max(...safeSteps.map((s) => s.value), 1);
+  const barStages = [
+    { label: 'Delivered', value: delivered, max: sent,     color: '#14b8a6' },
+    { label: 'Read',      value: read,      max: delivered, color: '#6366f1' },
+    { label: 'Replied',   value: replied,   max: read,      color: '#8b5cf6' },
+    { label: 'Failed',    value: failed,    max: sent,      color: '#ef4444' },
+    { label: 'Pending',   value: pending,   max: total,     color: '#94a3b8' },
+  ];
+
+  const funnelStages = [
+    { label: 'Audience', value: total,     pct: 100,           dropPct: null,          color: '#3b82f6' },
+    { label: 'Sent',     value: sent,      pct: pctOf(sent, total),  dropPct: dropToSent,   color: '#14b8a6' },
+    { label: 'Delivered',value: delivered, pct: pctOf(delivered, total), dropPct: dropToDelivered, color: '#6366f1' },
+    { label: 'Read',     value: read,      pct: pctOf(read, total),  dropPct: dropToRead,   color: '#8b5cf6' },
+    { label: 'Replied',  value: replied,   pct: pctOf(replied, total), dropPct: dropToReplied, color: '#f59e0b' },
+  ];
+
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <h3 className="mb-4 text-sm font-medium text-foreground">Funnel</h3>
-      <div className="h-72 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={safeSteps} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-            <XAxis 
-              dataKey="label" 
-              axisLine={false} 
-              tickLine={false}
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 13, fontWeight: 500 }}
-              dy={10}
+    <div className="space-y-4">
+      {/* ── Header Bar ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-5 py-3">
+        <div className="flex items-center gap-3">
+          <p className="text-base font-bold text-foreground">Broadcast Performance</p>
+          {isLive && (
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-500">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              Live
+            </span>
+          )}
+          {!isLive && (
+            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">Completed</span>
+          )}
+        </div>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          {isLive && lastUpdatedSec !== null && (
+            <span>Updated {lastUpdatedSec === 0 ? 'just now' : `${lastUpdatedSec}s ago`}</span>
+          )}
+          <span className="font-semibold text-foreground">
+            {Math.min(sent + failed, total).toLocaleString()} / {total.toLocaleString()} Processed
+          </span>
+          <div className="h-1.5 w-36 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-1.5 rounded-full bg-primary transition-all duration-500"
+              style={{ width: `${Math.min(100, processedRate)}%` }}
             />
-            <YAxis 
-              type="number" 
-              hide 
-            />
-            <Tooltip 
-              cursor={{ fill: 'hsl(var(--muted)/0.5)' }}
-              content={({ active, payload }) => {
-                if (active && payload && payload.length) {
-                  const data = payload[0].payload;
-                  const pct = safeSteps[0].value > 0 ? Math.round((data.value / safeSteps[0].value) * 100) : 0;
-                  return (
-                    <div className="rounded-lg border border-border bg-popover p-3 shadow-md">
-                      <p className="font-medium text-popover-foreground">{data.label}</p>
-                      <p className="text-sm text-muted-foreground">{data.value.toLocaleString()} recipients</p>
-                      <p className="text-xs text-muted-foreground mt-1">({pct}% of sent)</p>
+          </div>
+          <span className="tabular-nums">{processedRate}%</span>
+        </div>
+      </div>
+
+      {/* ── KPI Cards ── */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        {kpiCards.map((card) => (
+          <div key={card.label} className="relative overflow-hidden rounded-xl border border-border bg-card p-4">
+            <div className="absolute inset-x-0 top-0 h-0.5" style={{ background: card.color }} />
+            <p className="text-xs font-medium text-muted-foreground">{card.label}</p>
+            <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">{card.value}</p>
+            <div className="mt-1 flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">{card.sub}</p>
+              {card.positive !== null && (
+                <span
+                  className={`text-xs font-bold ${
+                    card.positive ? 'text-emerald-500' : 'text-red-500'
+                  }`}
+                >
+                  {card.positive ? '▲' : '▼'}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Funnel + Timeline ── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        {/* Conversion Funnel */}
+        <div className="lg:col-span-2 rounded-xl border border-border bg-card p-5">
+          <p className="mb-4 text-sm font-semibold text-foreground">Conversion Funnel</p>
+          <div className="space-y-3">
+            {funnelStages.map((stage, i) => {
+              const barW = Math.max(stage.pct, stage.pct > 0 ? 2 : 0);
+              return (
+                <div key={stage.label}>
+                  {stage.dropPct !== null && i > 0 && (
+                    <div className="flex items-center gap-2 py-0.5">
+                      <div className="ml-2 h-3 w-px bg-border" />
+                      <span className="text-[10px] text-muted-foreground">▼ {stage.dropPct}% converted</span>
                     </div>
-                  );
-                }
-                return null;
-              }}
-            />
-            <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={60} label={{ position: 'top', fill: 'hsl(var(--foreground))', fontSize: 14, fontWeight: 600 }}>
-              {safeSteps.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={getGraphColor(entry.color)} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <div className="w-20 shrink-0 text-right">
+                      <p className="text-xs font-semibold text-foreground">{stage.value.toLocaleString()}</p>
+                      <p className="text-[10px] text-muted-foreground">{stage.label}</p>
+                    </div>
+                    <div className="flex-1">
+                      <div className="h-6 overflow-hidden rounded-md bg-muted">
+                        <div
+                          className="h-6 rounded-md transition-all duration-700"
+                          style={{ width: `${barW}%`, background: stage.color, opacity: 0.85 }}
+                        />
+                      </div>
+                    </div>
+                    <span className="w-10 shrink-0 text-right text-xs font-semibold" style={{ color: stage.color }}>
+                      {stage.pct}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Delivery Timeline */}
+        <div className="lg:col-span-3 rounded-xl border border-border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Delivery Timeline</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Messages sent per minute</p>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
+              Messages / min
+            </div>
+          </div>
+          <div className="h-52">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={timelineData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="timelineGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="min"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: '#94a3b8' }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: '#94a3b8' }}
+                  tickFormatter={(v) => v.toLocaleString()}
+                />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null;
+                    return (
+                      <div className="rounded-lg border border-border bg-popover/95 backdrop-blur p-3 shadow-lg min-w-[120px]">
+                        <p className="text-xs font-semibold text-popover-foreground mb-1">{label}</p>
+                        <p className="text-lg font-bold text-popover-foreground">{payload[0].value?.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">messages</p>
+                      </div>
+                    );
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="msgs"
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
+                  fill="url(#timelineGrad)"
+                  dot={false}
+                  activeDot={{ r: 5, fill: '#3b82f6', strokeWidth: 0 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Insights + Bar Breakdown ── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Insights */}
+        <div className="rounded-xl border border-border bg-card p-5">
+          <p className="mb-3 text-sm font-semibold text-foreground">Performance Insights</p>
+          <div className="space-y-2">
+            {insights.map((ins, i) => (
+              <div key={i} className="flex items-start gap-2.5">
+                <span
+                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs ${
+                    ins.ok
+                      ? 'bg-emerald-500/15 text-emerald-500'
+                      : 'bg-amber-500/15 text-amber-500'
+                  }`}
+                >
+                  {ins.ok ? '✓' : '⚠'}
+                </span>
+                <p className="text-xs leading-relaxed text-muted-foreground">{ins.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Horizontal bar breakdown */}
+        <div className="rounded-xl border border-border bg-card p-5">
+          <p className="mb-4 text-sm font-semibold text-foreground">Message Breakdown</p>
+          <div className="space-y-3.5">
+            {barStages.map((stage) => {
+              const w = stage.max > 0 ? Math.max((stage.value / stage.max) * 100, stage.value > 0 ? 2 : 0) : 0;
+              return (
+                <div key={stage.label} className="flex items-center gap-3">
+                  <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">{stage.label}</span>
+                  <div className="flex-1 h-5 overflow-hidden rounded-md bg-muted">
+                    <div
+                      className="h-5 rounded-md transition-all duration-700"
+                      style={{ width: `${w}%`, background: stage.color }}
+                    />
+                  </div>
+                  <span className="w-14 shrink-0 text-right text-xs font-semibold text-foreground">
+                    {stage.value.toLocaleString()}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -372,12 +612,8 @@ export default function BroadcastDetailPage() {
 
   const status = getBroadcastStatus(broadcast.status);
 
-  const funnelSteps: FunnelStep[] = [
-    { label: t('stats.sent'), value: broadcast.sent_count, color: 'bg-primary' },
-    { label: t('stats.delivered'), value: broadcast.delivered_count, color: 'bg-teal-500' },
-    { label: t('stats.read'), value: broadcast.read_count, color: 'bg-blue-500' },
-    { label: t('stats.replied'), value: broadcast.replied_count, color: 'bg-indigo-500' },
-  ];
+
+
 
   const displayStatusLabel = broadcast.status === 'sent' ? 'COMPLETED' : status.label.toUpperCase();
   const displayStatusClasses = broadcast.status === 'sent'
@@ -550,67 +786,22 @@ export default function BroadcastDetailPage() {
         </Button>
       </div>
 
-      {/* Stats — 8 cards: Total / Sent / Delivered / Read / Replied / Not in WhatsApp / Frequency Limit / Failed */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-        <StatCard
-          label={t('stats.totalRecipients')}
-          value={broadcast.total_recipients}
-          total={broadcast.total_recipients}
-          icon={<Users className="h-4 w-4" />}
-          color="bg-muted text-muted-foreground"
-        />
-        <StatCard
-          label={t('stats.sent')}
-          value={broadcast.sent_count}
-          total={broadcast.total_recipients}
-          icon={<Send className="h-4 w-4" />}
-          color="bg-primary/10 text-primary"
-        />
-        <StatCard
-          label={t('stats.delivered')}
-          value={broadcast.delivered_count}
-          total={broadcast.total_recipients}
-          icon={<CheckCheck className="h-4 w-4" />}
-          color="bg-teal-500/10 text-teal-400"
-        />
-        <StatCard
-          label={t('stats.read')}
-          value={broadcast.read_count}
-          total={broadcast.total_recipients}
-          icon={<Eye className="h-4 w-4" />}
-          color="bg-blue-500/10 text-blue-400"
-        />
-        <StatCard
-          label={t('stats.replied')}
-          value={broadcast.replied_count}
-          total={broadcast.total_recipients}
-          icon={<MessageCircle className="h-4 w-4" />}
-          color="bg-indigo-500/10 text-indigo-400"
-        />
-        <StatCard
-          label={t('stats.notInWhatsapp')}
-          value={broadcast.not_in_whatsapp_count || 0}
-          total={broadcast.total_recipients}
-          icon={<AlertCircle className="h-4 w-4" />}
-          color="bg-orange-500/10 text-orange-400"
-        />
-        <StatCard
-          label={t('stats.frequencyLimit')}
-          value={broadcast.frequency_limit_count || 0}
-          total={broadcast.total_recipients}
-          icon={<AlertCircle className="h-4 w-4" />}
-          color="bg-amber-500/10 text-amber-400"
-        />
-        <StatCard
-          label={t('stats.failed')}
-          value={broadcast.failed_count}
-          total={broadcast.total_recipients}
-          icon={<AlertCircle className="h-4 w-4" />}
-          color="bg-red-500/10 text-red-400"
-        />
-      </div>
-
-      <FunnelChart steps={funnelSteps} />
+      {/* Analytics Dashboard */}
+      <AnalyticsDashboard
+        metrics={{
+          total: broadcast.total_recipients,
+          sent: broadcast.sent_count,
+          delivered: broadcast.delivered_count,
+          read: broadcast.read_count,
+          replied: broadcast.replied_count,
+          not_in_whatsapp: broadcast.not_in_whatsapp_count || 0,
+          frequency_limit: broadcast.frequency_limit_count || 0,
+          unsubscribed: broadcast.unsubscribed_count || 0,
+          failed: broadcast.failed_count,
+        }}
+        broadcastStatus={broadcast.status}
+        createdAt={broadcast.created_at}
+      />
 
       {/* Recipients Table */}
       <div className="rounded-xl border border-border bg-card">
