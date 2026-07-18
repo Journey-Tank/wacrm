@@ -15,6 +15,7 @@ import {
   phoneVariants,
   isRecipientNotAllowedError
 } from '@/lib/whatsapp/phone-utils';
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 
 interface WebhookWorkflow {
   id: string;
@@ -50,6 +51,8 @@ interface WebhookIntegration {
   whatsapp_config_id: string | null;
   is_connected: boolean;
   last_payload: unknown;
+  hmac_secret: string | null;
+  default_phone_prefix: string | null;
 }
 
 interface Contact {
@@ -70,109 +73,136 @@ export async function POST(
   const { id: workflowId } = await context.params;
   const db = supabaseAdmin();
 
-  let payload: Record<string, unknown> | null = null;
-  try {
-    const rawBody = await request.text();
-    if (rawBody) {
-      payload = JSON.parse(rawBody) as Record<string, unknown>;
-    }
-  } catch (e) {
-    console.error('[webhooks] failed to parse incoming body as JSON:', e);
-    return NextResponse.json({ error: 'Payload must be valid JSON' }, { status: 400 });
+  // 1. Rate limiting check
+  const rateLimitResult = checkRateLimit(`incoming-webhook:${workflowId}`, RATE_LIMITS.incomingWebhook);
+  if (!rateLimitResult.success) {
+    return rateLimitResponse(rateLimitResult);
   }
 
+  const rawBody = await request.text();
+
   let resolvedAccountId: string | null = null;
+  let payload: Record<string, unknown> | null = null;
 
   try {
-    // 1. Check if the ID belongs to a single workflow
-    const { data: workflowRow } = await db
+    // Check if the ID belongs to a workflow or directly to an integration
+    let integration: any = null;
+    let workflowRow: any = null;
+
+    const { data: wfRow } = await db
       .from('webhook_workflows')
       .select('*, integration:webhook_integrations(*)')
       .eq('id', workflowId)
       .maybeSingle();
 
-    if (workflowRow) {
-      resolvedAccountId = workflowRow.account_id;
-      const integration = workflowRow.integration;
-      
-      // Update integration's last_payload
-      if (payload && integration) {
-        await db
-          .from('webhook_integrations')
-          .update({
-            last_payload: payload,
-            is_connected: true,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', integration.id);
+    if (wfRow) {
+      workflowRow = wfRow;
+      integration = wfRow.integration;
+    } else {
+      const { data: intRow } = await db
+        .from('webhook_integrations')
+        .select('*')
+        .eq('id', workflowId)
+        .maybeSingle();
+      if (intRow) {
+        integration = intRow;
+      }
+    }
+
+    if (!integration) {
+      console.warn('[webhooks] workflow/integration not found for id:', workflowId);
+      return NextResponse.json({ error: 'Workflow or Integration not found' }, { status: 404 });
+    }
+
+    // 2. HMAC signature verification
+    if (integration.hmac_secret) {
+      const signatureHeader =
+        request.headers.get('x-webhook-signature') ||
+        request.headers.get('x-signature') ||
+        request.headers.get('x-hub-signature-256');
+
+      if (!signatureHeader) {
+        return NextResponse.json({ error: 'Signature header is missing' }, { status: 401 });
       }
 
+      let provided = signatureHeader;
+      if (provided.startsWith('sha256=')) {
+        provided = provided.slice(7);
+      }
+
+      const crypto = await import('node:crypto');
+      const computed = crypto.createHmac('sha256', integration.hmac_secret).update(rawBody).digest('hex');
+
+      const a = Buffer.from(provided);
+      const b = Buffer.from(computed);
+      if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      }
+    }
+
+    // 3. Parse JSON body
+    if (rawBody) {
+      try {
+        payload = JSON.parse(rawBody) as Record<string, unknown>;
+      } catch (e) {
+        console.error('[webhooks] failed to parse incoming body as JSON:', e);
+        return NextResponse.json({ error: 'Payload must be valid JSON' }, { status: 400 });
+      }
+    }
+
+    resolvedAccountId = integration.account_id;
+
+    // Update integration's last_payload
+    if (payload) {
+      await db
+        .from('webhook_integrations')
+        .update({
+          last_payload: payload,
+          is_connected: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', integration.id);
+    }
+
+    if (!payload || Object.keys(payload).length === 0) {
+      return NextResponse.json({ status: 'connected', message: 'Empty test payload received successfully' });
+    }
+
+    // If it's a single workflow ID
+    if (workflowRow) {
       if (!workflowRow.is_active) {
         return NextResponse.json({ status: 'skipped', message: 'Workflow is inactive' });
       }
-
-      if (!payload || Object.keys(payload).length === 0) {
-        return NextResponse.json({ status: 'connected', message: 'Empty test payload received successfully' });
-      }
-
       const result = await executeWorkflow(workflowRow, integration, payload);
       return NextResponse.json(result);
     }
 
-    // 2. If not a workflow ID, check if it's an integration ID
-    const { data: integrationRow } = await db
-      .from('webhook_integrations')
+    // If it's an integration ID, execute all its active workflows
+    const { data: workflows, error: wfErr } = await db
+      .from('webhook_workflows')
       .select('*')
-      .eq('id', workflowId)
-      .maybeSingle();
+      .eq('integration_id', integration.id)
+      .eq('is_active', true);
 
-    if (integrationRow) {
-      resolvedAccountId = integrationRow.account_id;
-      if (payload) {
-        await db
-          .from('webhook_integrations')
-          .update({
-            last_payload: payload,
-            is_connected: true,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', integrationRow.id);
-      }
-
-      if (!payload || Object.keys(payload).length === 0) {
-        return NextResponse.json({ status: 'connected', message: 'Empty test payload received successfully' });
-      }
-
-      // Fetch all active workflows for this integration
-      const { data: workflows, error: wfErr } = await db
-        .from('webhook_workflows')
-        .select('*')
-        .eq('integration_id', integrationRow.id)
-        .eq('is_active', true);
-
-      if (wfErr) {
-        throw new Error(`Failed to fetch workflows: ${wfErr.message}`);
-      }
-
-      if (!workflows || workflows.length === 0) {
-        return NextResponse.json({ status: 'connected', message: 'No active workflows configured for this integration.' });
-      }
-
-      const results = [];
-      for (const wf of workflows) {
-        try {
-          const res = await executeWorkflow(wf, integrationRow, payload);
-          results.push({ workflow: wf.name, status: 'success', details: res });
-        } catch (err) {
-          results.push({ workflow: wf.name, status: 'failed', error: err instanceof Error ? err.message : String(err) });
-        }
-      }
-
-      return NextResponse.json({ success: true, results });
+    if (wfErr) {
+      throw new Error(`Failed to fetch workflows: ${wfErr.message}`);
     }
 
-    console.warn('[webhooks] workflow/integration not found for id:', workflowId);
-    return NextResponse.json({ error: 'Workflow or Integration not found' }, { status: 404 });
+    if (!workflows || workflows.length === 0) {
+      return NextResponse.json({ status: 'connected', message: 'No active workflows configured for this integration.' });
+    }
+
+    const results = [];
+    for (const wf of workflows) {
+      try {
+        const res = await executeWorkflow(wf, integration, payload);
+        results.push({ workflow: wf.name, status: 'success', details: res });
+      } catch (err) {
+        results.push({ workflow: wf.name, status: 'failed', error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
+    return NextResponse.json({ success: true, results });
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown execution error';
     console.error('[webhooks] incoming trigger failed:', errorMsg);
@@ -232,7 +262,8 @@ async function executeWorkflow(workflow: WebhookWorkflow, integration: WebhookIn
 
     let sanitizedPhone = sanitizePhoneForMeta(String(rawPhone));
     if (sanitizedPhone.length === 10) {
-      sanitizedPhone = '91' + sanitizedPhone;
+      const prefix = integration.default_phone_prefix || '91';
+      sanitizedPhone = prefix + sanitizedPhone;
     }
     
     if (!isValidE164(sanitizedPhone)) {
@@ -387,7 +418,8 @@ async function executeWorkflow(workflow: WebhookWorkflow, integration: WebhookIn
         templateName,
         language,
         template: templateRow ?? undefined,
-        messageParams: templateParams
+        messageParams: templateParams,
+        useMarketingEndpoint: config.use_marketing_endpoint
       });
       return result.messageId;
     };

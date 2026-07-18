@@ -16,6 +16,8 @@ export function WebhookConfiguration() {
   const [lastPayload, setLastPayload] = useState<Record<string, unknown> | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hmacSecret, setHmacSecret] = useState('');
+  const [defaultPhonePrefix, setDefaultPhonePrefix] = useState('91');
 
   // Payload listening state
   const [isListening, setIsListening] = useState(false);
@@ -44,6 +46,8 @@ export function WebhookConfiguration() {
             setSelectedChannel(data.config.whatsapp_config_id || '');
             setIntegrationId(data.config.id);
             setLastPayload(data.config.last_payload);
+            setHmacSecret(data.config.hmac_secret || '');
+            setDefaultPhonePrefix(data.config.default_phone_prefix || '91');
           }
         }
       } catch (err) {
@@ -71,7 +75,9 @@ export function WebhookConfiguration() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: integrationName,
-          whatsapp_config_id: selectedChannel || null
+          whatsapp_config_id: selectedChannel || null,
+          hmac_secret: hmacSecret || null,
+          default_phone_prefix: defaultPhonePrefix || '91'
         })
       });
 
@@ -185,6 +191,51 @@ export function WebhookConfiguration() {
               ))}
             </select>
           </div>
+
+
+          <div>
+            <label className="mb-2 block text-xs font-semibold text-muted-foreground">HMAC Verification Secret (Optional)</label>
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                value={hmacSecret}
+                onChange={(e) => setHmacSecret(e.target.value)}
+                placeholder="Leave empty to disable signature check"
+                className="font-mono text-sm"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  const chars = 'abcdef0123456789';
+                  let token = '';
+                  for (let i = 0; i < 32; i++) {
+                    token += chars.charAt(Math.floor(Math.random() * chars.length));
+                  }
+                  setHmacSecret(token);
+                }}
+              >
+                Generate
+              </Button>
+            </div>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              If set, incoming requests must include a valid signature in the <code className="bg-muted px-1 rounded text-[9px]">X-Webhook-Signature</code> (or <code className="bg-muted px-1 rounded text-[9px]">X-Signature</code>) header.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-xs font-semibold text-muted-foreground">Default Country Code Prefix</label>
+            <Input
+              type="text"
+              value={defaultPhonePrefix}
+              onChange={(e) => setDefaultPhonePrefix(e.target.value.replace(/\D/g, ''))}
+              placeholder="e.g. 91"
+            />
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Fallback country prefix prepended to 10-digit numbers (defaults to <code className="bg-muted px-1 rounded text-[9px]">91</code>).
+            </p>
+          </div>
+
         </div>
 
         <div className="mt-6 flex justify-end">

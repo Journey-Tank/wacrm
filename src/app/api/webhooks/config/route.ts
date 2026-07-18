@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const { data: profile } = await supabase.from('profiles').select('account_id').eq('user_id', user.id).maybeSingle();
     if (!profile?.account_id) return NextResponse.json({ error: 'No account linked' }, { status: 403 });
 
-    const { name, whatsapp_config_id } = await request.json();
+    const { name, whatsapp_config_id, hmac_secret, default_phone_prefix } = await request.json();
     if (!name) return NextResponse.json({ error: 'Integration Name is required' }, { status: 400 });
 
     const { data: config, error } = await supabase
@@ -42,6 +42,8 @@ export async function POST(request: Request) {
           account_id: profile.account_id,
           name,
           whatsapp_config_id: whatsapp_config_id || null,
+          hmac_secret: hmac_secret || null,
+          default_phone_prefix: default_phone_prefix || '91',
           updated_at: new Date().toISOString()
         },
         { onConflict: 'account_id' }

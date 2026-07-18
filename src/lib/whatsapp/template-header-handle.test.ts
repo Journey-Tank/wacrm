@@ -55,6 +55,7 @@ describe('ensureImageHeaderHandle', () => {
     expect(p.header_handle).toBe('existing');
   });
 
+
   it('resolves App ID dynamically when META_APP_ID is unset', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => imgResponse('image/jpeg', 2048)));
     vi.mocked(getMetaAppId).mockResolvedValueOnce('resolved-app-id');
@@ -70,6 +71,7 @@ describe('ensureImageHeaderHandle', () => {
     const p = payload();
     await expect(ensureImageHeaderHandle(p, 'tok')).rejects.toThrow(/dynamic resolution failed/);
   });
+
 
   it('derives + sets header_handle from a valid image URL', async () => {
     vi.stubEnv('META_APP_ID', 'app-1');

@@ -285,6 +285,8 @@ export interface WhatsAppConfig {
   subscribed_apps_at?: string;
   /** Last error from /register; cleared on success. */
   last_registration_error?: string;
+  /** If true, uses the marketing_messages endpoint for templates in the Marketing category. */
+  use_marketing_endpoint?: boolean;
 }
 
 // Raw Meta status enum. We persist this verbatim from Meta (sync + webhook)

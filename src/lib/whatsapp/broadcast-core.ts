@@ -75,6 +75,7 @@ export interface BroadcastPlan {
   planned: PlannedRecipient[];
   /** Phones rejected up front (invalid E.164) — counted as failed. */
   rejected: number;
+  useMarketingEndpoint?: boolean;
 }
 
 const MAX_RECIPIENTS = 1000;
@@ -248,6 +249,7 @@ export async function createBroadcast(
     templateRow,
     planned,
     rejected,
+    useMarketingEndpoint: config.use_marketing_endpoint,
   };
 }
 
@@ -285,6 +287,7 @@ export async function deliverBroadcast(
           language: plan.templateLanguage,
           template: plan.templateRow ?? undefined,
           params: recipient.params,
+          useMarketingEndpoint: plan.useMarketingEndpoint,
         });
         sentMessageId = result.messageId;
         lastError = null;

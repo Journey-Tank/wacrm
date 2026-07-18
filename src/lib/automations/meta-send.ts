@@ -169,6 +169,7 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
         language: input.language,
         template: templateRow,
         params: input.params,
+        useMarketingEndpoint: config.use_marketing_endpoint,
       })
       return r.messageId
     }

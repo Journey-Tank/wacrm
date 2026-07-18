@@ -209,6 +209,7 @@ export async function POST(request: Request) {
             template: templateRow ?? undefined,
             messageParams: recipient.messageParams,
             params: recipient.params ?? [],
+            useMarketingEndpoint: config.use_marketing_endpoint,
           })
           sentMessageId = result.messageId
           lastError = null

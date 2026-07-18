@@ -335,7 +335,7 @@ describe("sendTemplateMessage — dynamic routing", () => {
     expect(capturedUrl).not.toContain("marketing_messages");
   });
 
-  it("routes to /marketing_messages when template category is Marketing", async () => {
+  it("routes to /marketing_messages when template category is Marketing and useMarketingEndpoint is true", async () => {
     let capturedUrl: string | null = null;
     vi.stubGlobal(
       "fetch",
@@ -350,6 +350,7 @@ describe("sendTemplateMessage — dynamic routing", () => {
 
     const result = await sendTemplateMessage({
       ...BASE_TEMPLATE_ARGS,
+      useMarketingEndpoint: true,
       template: {
         id: "tpl-123",
         user_id: "user-123",
@@ -364,4 +365,36 @@ describe("sendTemplateMessage — dynamic routing", () => {
     expect(capturedUrl).toContain("test-phone/marketing_messages");
     expect(capturedUrl).not.toContain("test-phone/messages");
   });
+
+  it("routes to /messages when template category is Marketing but useMarketingEndpoint is false", async () => {
+    let capturedUrl: string | null = null;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        capturedUrl = url;
+        return new Response(
+          JSON.stringify({ messages: [{ id: "wamid.TEMPLATE_MARKETING_FALLBACK" }] }),
+          { status: 200 },
+        );
+      }),
+    );
+
+    const result = await sendTemplateMessage({
+      ...BASE_TEMPLATE_ARGS,
+      useMarketingEndpoint: false,
+      template: {
+        id: "tpl-123",
+        user_id: "user-123",
+        name: "my_template",
+        category: "Marketing",
+        body_text: "Hi",
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    });
+
+    expect(result).toEqual({ messageId: "wamid.TEMPLATE_MARKETING_FALLBACK" });
+    expect(capturedUrl).toContain("test-phone/messages");
+    expect(capturedUrl).not.toContain("test-phone/marketing_messages");
+  });
+
 });

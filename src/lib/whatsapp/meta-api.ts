@@ -325,7 +325,6 @@ export async function sendMediaMessage(
   const data = await response.json()
   return { messageId: data.messages[0].id }
 }
-
 import type { MessageTemplate } from '@/types'
 import {
   buildSendComponents,
@@ -361,6 +360,8 @@ export interface SendTemplateMessageArgs {
   messageParams?: SendTimeParams
   /** Meta's message_id of the message being replied to. */
   contextMessageId?: string
+  /** If true, uses the marketing_messages endpoint for templates in the Marketing category. */
+  useMarketingEndpoint?: boolean
 }
 
 /**
@@ -387,10 +388,12 @@ export async function sendTemplateMessage(
     template,
     messageParams,
     contextMessageId,
+    useMarketingEndpoint,
   } = args
   const isMarketing =
-    template?.category === 'Marketing' ||
-    template?.category?.toUpperCase() === 'MARKETING'
+    (template?.category === 'Marketing' ||
+      template?.category?.toUpperCase() === 'MARKETING') &&
+    useMarketingEndpoint
   const endpoint = isMarketing ? 'marketing_messages' : 'messages'
   const url = `${META_API_BASE}/${phoneNumberId}/${endpoint}`
 

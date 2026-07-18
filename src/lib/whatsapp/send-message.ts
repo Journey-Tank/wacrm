@@ -341,6 +341,7 @@ export async function sendMessageToConversation(
         messageParams: templateMessageParams ?? undefined,
         params: templateParams || [],
         contextMessageId,
+        useMarketingEndpoint: config.use_marketing_endpoint,
       });
       return result.messageId;
     }
